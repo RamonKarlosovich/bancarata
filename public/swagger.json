@@ -1,0 +1,148 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "BANCARATA – API bancaria",
+    "version": "1.0.0",
+    "description": "Servicio bancario para procesar transferencias internas entre tarjetas conectadas a cuentas bancarias."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000",
+      "description": "Servidor local de desarrollo"
+    },
+    {
+      "url": "https://bancaratabank-api.vercel.app",
+      "description": "Servidor en producción"
+    }
+  ],
+  "paths": {
+    "/api/bank": {
+      "post": {
+        "summary": "Procesar transacción bancaria",
+        "description": "Recibe datos de una transacción desde un comercio y ejecuta una transferencia interna entre tarjetas.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransaccionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Transacción aprobada",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransaccionResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Solicitud incorrecta (faltan datos o monto inválido)"
+          },
+          "404": {
+            "description": "Tarjeta origen o destino no encontrada"
+          },
+          "500": {
+            "description": "Error interno del servidor"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "TransaccionRequest": {
+        "type": "object",
+        "required": [
+          "NumeroTarjetaOrigen",
+          "NumeroTarjetaDestino",
+          "NombreCliente",
+          "MesExp",
+          "AnioExp",
+          "Cvv",
+          "Monto"
+        ],
+        "properties": {
+          "NumeroTarjetaOrigen": {
+            "type": "string",
+            "example": "4111111111111111"
+          },
+          "NumeroTarjetaDestino": {
+            "type": "string",
+            "example": "5555555555554444"
+          },
+          "NombreCliente": {
+            "type": "string",
+            "example": "Juan Pérez"
+          },
+          "MesExp": {
+            "type": "integer",
+            "example": 12
+          },
+          "AnioExp": {
+            "type": "integer",
+            "example": 2030
+          },
+          "Cvv": {
+            "type": "string",
+            "example": "123"
+          },
+          "Monto": {
+            "type": "number",
+            "example": 150.25
+          }
+        }
+      },
+      "TransaccionResponse": {
+        "type": "object",
+        "properties": {
+          "CreadaUTC": {
+            "type": "string",
+            "example": "2025-02-18T10:20:00Z"
+          },
+          "IdTransaccion": {
+            "type": "string",
+            "example": "TRX-1024"
+          },
+          "TipoTransaccion": {
+            "type": "string",
+            "example": "TRANSFERENCIA"
+          },
+          "MontoTransaccion": {
+            "type": "number",
+            "example": 150.25
+          },
+          "MarcaTarjeta": {
+            "type": "string",
+            "example": "VISA"
+          },
+          "NumeroTarjeta": {
+            "type": "string",
+            "example": "**** **** **** 1111"
+          },
+          "NumeroAutorizacion": {
+            "type": "string",
+            "example": "AUTH-384920"
+          },
+          "NombreEstado": {
+            "type": "string",
+            "example": "ACEPTADA"
+          },
+          "Firma": {
+            "type": "string",
+            "example": "PIN"
+          },
+          "Mensaje": {
+            "type": "string",
+            "example": "Pago aprobado"
+          }
+        }
+      }
+    }
+  }
+}
