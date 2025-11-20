@@ -2,9 +2,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/db/supabaseClient";
 
-// ------- Tipos -------
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-// Lo que LOS OTROS SERVICIOS le mandan al banco
 interface TransaccionRequest {
   NumeroTarjetaOrigen: string;
   NumeroTarjetaDestino: string;
@@ -13,14 +13,12 @@ interface TransaccionRequest {
   AnioExp: number;
   Cvv: string;
   Monto: number;
-  // Opcional, si alguna vez quieres usar idempotencia
   IdempotenciaId?: string;
 }
 
-// Lo que el BANCO les regresa a los otros servicios
 interface TransaccionResponse {
   CreadaUTC: string;
-  IdTransaccion: string;        // <- PascalCase, igual que en swagger
+  IdTransaccion: string;
   TipoTransaccion: string;
   MontoTransaccion: number;
   MarcaTarjeta: string;
@@ -31,185 +29,170 @@ interface TransaccionResponse {
   Mensaje: string;
 }
 
-// Coincide con la estructura real en Supabase
-interface TarjetaConCuenta {
-  id_tarjeta: number;
-  numero_tarjeta: string;
-  cuentas: {
-    id_cuenta: number;
-    saldo_actual: string | number;
-  } | null;
-}
-
-// Lo que devuelve la función RPC transferir_saldo
-interface RpcTransferirSaldoRow {
-  id_transaccion: number;
-}
-
-// ------- Handler -------
-
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as TransaccionRequest;
     const supabase = getSupabaseServer();
 
-    // Validaciones rápidas
-    if (!body.NumeroTarjetaOrigen || !body.NumeroTarjetaDestino) {
-      return NextResponse.json(
-        { Mensaje: "Número de tarjeta origen y destino son obligatorios" },
-        { status: 400 }
-      );
+    if (
+      !body.NumeroTarjetaOrigen ||
+      !body.NumeroTarjetaDestino ||
+      !body.NombreCliente ||
+      !body.MesExp ||
+      !body.AnioExp ||
+      !body.Cvv ||
+      !body.Monto
+    ) {
+      return NextResponse.json({ Mensaje: "Datos incompletos" }, { status: 400 });
     }
 
     if (body.NumeroTarjetaOrigen === body.NumeroTarjetaDestino) {
-      return NextResponse.json(
-        { Mensaje: "La tarjeta origen y destino no pueden ser la misma" },
-        { status: 400 }
-      );
+      return NextResponse.json({ Mensaje: "La tarjeta origen y destino no pueden ser la misma" }, { status: 400 });
     }
 
     if (body.Monto <= 0) {
-      return NextResponse.json(
-        { Mensaje: "El monto debe ser mayor a cero" },
-        { status: 400 }
-      );
+      return NextResponse.json({ Mensaje: "El monto debe ser mayor a cero" }, { status: 400 });
     }
 
-    // --- Buscar tarjeta origen ---
-    const { data: origenData, error: origenErr } = await supabase
+    const { data: tarjetaOrigen, error: errTO } = await supabase
       .from("tarjetas")
-      .select(
-        `
-        id_tarjeta,
-        numero_tarjeta,
-        cuentas (
-          id_cuenta,
-          saldo_actual
-        )
-      `
-      )
+      .select("id_tarjeta,id_cuenta,numero_tarjeta,cvv,mes_exp,anio_exp")
       .eq("numero_tarjeta", body.NumeroTarjetaOrigen)
-      .limit(1)
-      .single<TarjetaConCuenta>();
+      .single();
 
-    if (origenErr || !origenData) {
-      console.error("Error buscando tarjeta origen:", origenErr);
-      return NextResponse.json(
-        { Mensaje: "Tarjeta origen no encontrada" },
-        { status: 404 }
-      );
+    if (errTO || !tarjetaOrigen) {
+      return NextResponse.json({ Mensaje: "Tarjeta origen no encontrada" }, { status: 404 });
     }
 
-    if (!origenData.cuentas) {
-      return NextResponse.json(
-        { Mensaje: "Cuenta asociada a la tarjeta origen no encontrada" },
-        { status: 404 }
-      );
-    }
-
-    // --- Buscar tarjeta destino ---
-    const { data: destinoData, error: destErr } = await supabase
+    const { data: tarjetaDestino, error: errTD } = await supabase
       .from("tarjetas")
-      .select(
-        `
-        id_tarjeta,
-        numero_tarjeta,
-        cuentas (
-          id_cuenta,
-          saldo_actual
-        )
-      `
-      )
+      .select("id_tarjeta,id_cuenta,numero_tarjeta")
       .eq("numero_tarjeta", body.NumeroTarjetaDestino)
-      .limit(1)
-      .single<TarjetaConCuenta>();
+      .single();
 
-    if (destErr || !destinoData) {
-      console.error("Error buscando tarjeta destino:", destErr);
-      return NextResponse.json(
-        { Mensaje: "Tarjeta destino no encontrada" },
-        { status: 404 }
-      );
+    if (errTD || !tarjetaDestino) {
+      return NextResponse.json({ Mensaje: "Tarjeta destino no encontrada" }, { status: 404 });
     }
 
-    if (!destinoData.cuentas) {
-      return NextResponse.json(
-        { Mensaje: "Cuenta asociada a la tarjeta destino no encontrada" },
-        { status: 404 }
-      );
+    if (String(tarjetaOrigen.cvv) !== String(body.Cvv)) {
+      return NextResponse.json({ Mensaje: "CVV inválido" }, { status: 400 });
     }
 
-    const saldoOrigen = Number(origenData.cuentas.saldo_actual);
+    if (Number(tarjetaOrigen.mes_exp) !== Number(body.MesExp) || Number(tarjetaOrigen.anio_exp) !== Number(body.AnioExp)) {
+      return NextResponse.json({ Mensaje: "Fecha de expiración inválida" }, { status: 400 });
+    }
 
+    const { data: cuentaOrigen, error: errCO } = await supabase
+      .from("cuentas")
+      .select("id_cuenta,id_cliente,saldo_actual")
+      .eq("id_cuenta", tarjetaOrigen.id_cuenta)
+      .single();
+
+    if (errCO || !cuentaOrigen) {
+      return NextResponse.json({ Mensaje: "Cuenta origen no encontrada" }, { status: 404 });
+    }
+
+    const { data: cuentaDestino, error: errCD } = await supabase
+      .from("cuentas")
+      .select("id_cuenta,saldo_actual")
+      .eq("id_cuenta", tarjetaDestino.id_cuenta)
+      .single();
+
+    if (errCD || !cuentaDestino) {
+      return NextResponse.json({ Mensaje: "Cuenta destino no encontrada" }, { status: 404 });
+    }
+
+    const { data: cliente, error: errCli } = await supabase
+      .from("clientes")
+      .select("id_cliente,nombre")
+      .eq("id_cliente", cuentaOrigen.id_cliente)
+      .single();
+
+    if (errCli || !cliente) {
+      return NextResponse.json({ Mensaje: "Cliente de la tarjeta origen no encontrado" }, { status: 404 });
+    }
+
+    const normalize = (s: string) => s.trim().toLocaleLowerCase("es-MX");
+    if (normalize(cliente.nombre) !== normalize(body.NombreCliente)) {
+      return NextResponse.json({ Mensaje: "El nombre no coincide con el titular de la tarjeta" }, { status: 400 });
+    }
+
+    const saldoOrigen = Number(cuentaOrigen.saldo_actual);
     if (saldoOrigen < body.Monto) {
-      return NextResponse.json(
-        { Mensaje: "Fondos insuficientes" },
-        { status: 400 }
-      );
+      return NextResponse.json({ Mensaje: "Fondos insuficientes" }, { status: 400 });
     }
 
-    // --- Llamar RPC transaccional ---
-    const rpcResult = await supabase.rpc("transferir_saldo", {
-      p_id_cuenta_origen: origenData.cuentas.id_cuenta,
-      p_id_cuenta_destino: destinoData.cuentas.id_cuenta,
-      p_id_tarjeta_origen: origenData.id_tarjeta,
-      p_id_tarjeta_destino: destinoData.id_tarjeta,
-      p_monto: body.Monto,
-      // descripción genérica; se guarda en la columna `descripcion`
-      p_descripcion: "TRANSFERENCIA",
-    });
+    const nuevoSaldoOrigen = saldoOrigen - body.Monto;
+    const nuevoSaldoDestino = Number(cuentaDestino.saldo_actual) + body.Monto;
 
-    const trx = rpcResult.data as RpcTransferirSaldoRow[] | null;
-    const trxErr = rpcResult.error;
+    const { error: errDeb } = await supabase
+      .from("cuentas")
+      .update({ saldo_actual: nuevoSaldoOrigen })
+      .eq("id_cuenta", cuentaOrigen.id_cuenta);
 
-    if (trxErr) {
-      console.error("Error RPC transferir_saldo:", trxErr);
-      return NextResponse.json(
-        {
-          Mensaje: "No se pudo completar la transacción",
-          Detalle: trxErr.message,
-        },
-        { status: 500 }
-      );
+    if (errDeb) {
+      return NextResponse.json({ Mensaje: "No se pudo debitar la cuenta de origen" }, { status: 500 });
     }
 
-    if (!trx || trx.length === 0) {
-      return NextResponse.json(
-        { Mensaje: "La transacción no devolvió un identificador" },
-        { status: 500 }
-      );
+    const { error: errCred } = await supabase
+      .from("cuentas")
+      .update({ saldo_actual: nuevoSaldoDestino })
+      .eq("id_cuenta", cuentaDestino.id_cuenta);
+
+    if (errCred) {
+      await supabase.from("cuentas").update({ saldo_actual: saldoOrigen }).eq("id_cuenta", cuentaOrigen.id_cuenta);
+      return NextResponse.json({ Mensaje: "No se pudo acreditar la cuenta destino" }, { status: 500 });
     }
 
-    const idNum = trx[0].id_transaccion;              // 1, 2, 3, ...
-    const idFormateado = idNum.toString().padStart(6, "0"); // "000001"
+    const { data: estadoRow } = await supabase
+      .from("estados_transaccion")
+      .select("id_estado_transaccion")
+      .eq("nombre", "COMPLETADA")
+      .single();
 
-    // --- Armar respuesta bancaria ---
-    const ultimos4 = body.NumeroTarjetaOrigen.slice(-4);
+    const idEstado = estadoRow?.id_estado_transaccion ?? 2;
+
+    const { data: trxRow, error: errTrx } = await supabase
+      .from("transacciones")
+      .insert({
+        tipo: "TRANSFERENCIA",
+        monto: body.Monto,
+        id_tarjeta_origen: tarjetaOrigen.id_tarjeta,
+        id_tarjeta_destino: tarjetaDestino.id_tarjeta,
+        descripcion: "TRANSFERENCIA",
+        id_estado_transaccion: idEstado,
+      })
+      .select("id_transaccion,creada_utc")
+      .single();
+
+    if (errTrx || !trxRow) {
+      await supabase.from("cuentas").update({ saldo_actual: saldoOrigen }).eq("id_cuenta", cuentaOrigen.id_cuenta);
+      await supabase
+        .from("cuentas")
+        .update({ saldo_actual: Number(cuentaDestino.saldo_actual) })
+        .eq("id_cuenta", cuentaDestino.id_cuenta);
+      return NextResponse.json({ Mensaje: "No se pudo registrar la transacción" }, { status: 500 });
+    }
+
+    const ult4 = String(tarjetaDestino.numero_tarjeta).slice(-4);
+    const idBonito = String(trxRow.id_transaccion).padStart(6, "0");
 
     const respuesta: TransaccionResponse = {
-      CreadaUTC: new Date().toISOString(),
-      IdTransaccion: `TRX-${idFormateado}`,     // <- aquí ya queda consecutivo y bonito
-      TipoTransaccion: "TRANSFERENCIA",
+      CreadaUTC: new Date(trxRow.creada_utc).toISOString(),
+      IdTransaccion: `TRX-${idBonito}`,
+      TipoTransaccion: "Transferencia",
       MontoTransaccion: body.Monto,
-      MarcaTarjeta: "VISA",
-      NumeroTarjeta: `**** **** **** ${ultimos4}`,
-      NumeroAutorizacion: `AUTH-${Math.floor(
-        100000 + Math.random() * 900000
-      )}`,
-      NombreEstado: "ACEPTADA",
-      Firma: "PIN",
-      Mensaje: "Pago aprobado",
+      MarcaTarjeta: "BBVA",
+      NumeroTarjeta: `**** **** **** ${ult4}`,
+      NumeroAutorizacion: `AUTH-${Math.floor(100000 + Math.random() * 900000)}`,
+      NombreEstado: "COMPLETADA",
+      Firma: "NIP",
+      Mensaje: "Transferencia realizada con éxito",
     };
 
     return NextResponse.json(respuesta, { status: 200 });
   } catch (error) {
-    console.error("Error inesperado en /api/bank:", error);
-    return NextResponse.json(
-      {
-        Mensaje: "Error interno del servidor",
-        Detalle: error instanceof Error ? error.message : String(error),
-      },
-      { status: 500 }
-    );
+    const detalle = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ Mensaje: "Error interno del servidor", Detalle: detalle }, { status: 500 });
   }
 }
