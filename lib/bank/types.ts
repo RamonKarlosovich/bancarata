@@ -18,7 +18,7 @@ export interface TransaccionRequest {
 export interface TransaccionResponse {
   CreadaUTC: string;
 
-  IdTransaccion: string;
+  id_transaccion: string;
   TipoTransaccion: string;
 
   MontoTransaccion: number;

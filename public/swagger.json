@@ -105,7 +105,7 @@
             "type": "string",
             "example": "2025-02-18T10:20:00Z"
           },
-          "IdTransaccion": {
+          "id_transaccion": {
             "type": "string",
             "example": "TRX-1024"
           },

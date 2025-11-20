@@ -1,8 +1,10 @@
+// app/api/bank/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/db/supabaseClient";
 
 // ------- Tipos -------
 
+// Lo que LOS OTROS SERVICIOS le mandan al banco
 interface TransaccionRequest {
   NumeroTarjetaOrigen: string;
   NumeroTarjetaDestino: string;
@@ -11,11 +13,14 @@ interface TransaccionRequest {
   AnioExp: number;
   Cvv: string;
   Monto: number;
+  // Opcional, si alguna vez quieres usar idempotencia
+  IdempotenciaId?: string;
 }
 
+// Lo que el BANCO les regresa a los otros servicios
 interface TransaccionResponse {
   CreadaUTC: string;
-  IdTransaccion: string;
+  IdTransaccion: string;        // <- PascalCase, igual que en swagger
   TipoTransaccion: string;
   MontoTransaccion: number;
   MarcaTarjeta: string;
@@ -175,14 +180,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const idTransaccion = trx[0].id_transaccion;
+    const idNum = trx[0].id_transaccion;              // 1, 2, 3, ...
+    const idFormateado = idNum.toString().padStart(6, "0"); // "000001"
 
     // --- Armar respuesta bancaria ---
     const ultimos4 = body.NumeroTarjetaOrigen.slice(-4);
 
     const respuesta: TransaccionResponse = {
       CreadaUTC: new Date().toISOString(),
-      IdTransaccion: `TRX-${idTransaccion}`,
+      IdTransaccion: `TRX-${idFormateado}`,     // <- aquí ya queda consecutivo y bonito
       TipoTransaccion: "TRANSFERENCIA",
       MontoTransaccion: body.Monto,
       MarcaTarjeta: "VISA",
