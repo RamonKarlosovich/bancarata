@@ -94,7 +94,7 @@
           },
           "Monto": {
             "type": "number",
-            "example": 150.25
+            "example": 1500.25
           }
         }
       },
