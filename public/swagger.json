@@ -11,7 +11,7 @@
       "description": "Servidor local de desarrollo"
     },
     {
-      "url": "https://bancaratabank-api.vercel.app",
+      "url": "https://bancarata.vercel.app",
       "description": "Servidor en producción"
     }
   ],
@@ -106,17 +106,38 @@
       "TransaccionResponse": {
         "type": "object",
         "properties": {
-          "NombreComercio": { "type": "string", "example": "TIENDA DEMO" },
-          "CreadaUTC": { "type": "string", "example": "2025-02-18T10:20:00Z" },
-          "IdTransaccion": { "type": "string", "example": "TRX-1024" },
-          "TipoTransaccion": { "type": "string", "example": "TRANSFERENCIA" },
-          "MontoTransaccion": { "type": "number", "example": 150.25 },
-          "MarcaTarjeta": { "type": "string", "example": "VISA" },
-          "NumeroTarjeta": { "type": "string", "example": "**** **** **** 1111" },
-          "NumeroAutorizacion": { "type": "string", "example": "AUTH-384920" },
-          "NombreEstado": { "type": "string", "example": "ACEPTADA" },
-          "Firma": { "type": "string", "example": "PIN" },
-          "Mensaje": { "type": "string", "example": "Pago aprobado" }
+          "CreadaUTC": {
+            "type": "string",
+            "example": "2025-02-18T10:20:00Z"
+          },
+          "IdTransaccion": {
+            "type": "string",
+            "example": "TRX-1024"
+          },
+          "TipoTransaccion": {
+            "type": "string",
+            "example": "TRANSFERENCIA"
+          },
+          "MontoTransaccion": {
+            "type": "number",
+            "example": 150.25
+          },
+          "NumeroTarjeta": {
+            "type": "string",
+            "example": "**** **** **** 1111"
+          },
+          "NombreEstado": {
+            "type": "string",
+            "example": "COMPLETADA"
+          },
+          "Firma": {
+            "type": "string",
+            "example": "NIP"
+          },
+          "Descripcion": {
+            "type": "string",
+            "example": "Transferencia realizada con éxito"
+          }
         }
       }
     }
