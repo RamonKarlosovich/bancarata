@@ -59,6 +59,7 @@
       "TransaccionRequest": {
         "type": "object",
         "required": [
+          "NombreComercio",
           "NumeroTarjetaOrigen",
           "NumeroTarjetaDestino",
           "NombreCliente",
@@ -68,6 +69,10 @@
           "Monto"
         ],
         "properties": {
+          "NombreComercio": {
+            "type": "string",
+            "example": "TIENDA DEMO"
+          },
           "NumeroTarjetaOrigen": {
             "type": "string",
             "example": "4111111111111111"
@@ -94,53 +99,24 @@
           },
           "Monto": {
             "type": "number",
-            "example": 1500.25
+            "example": 150.25
           }
         }
       },
       "TransaccionResponse": {
         "type": "object",
         "properties": {
-          "CreadaUTC": {
-            "type": "string",
-            "example": "2025-02-18T10:20:00Z"
-          },
-          "id_transaccion": {
-            "type": "string",
-            "example": "TRX-1024"
-          },
-          "TipoTransaccion": {
-            "type": "string",
-            "example": "TRANSFERENCIA"
-          },
-          "MontoTransaccion": {
-            "type": "number",
-            "example": 150.25
-          },
-          "MarcaTarjeta": {
-            "type": "string",
-            "example": "VISA"
-          },
-          "NumeroTarjeta": {
-            "type": "string",
-            "example": "**** **** **** 1111"
-          },
-          "NumeroAutorizacion": {
-            "type": "string",
-            "example": "AUTH-384920"
-          },
-          "NombreEstado": {
-            "type": "string",
-            "example": "ACEPTADA"
-          },
-          "Firma": {
-            "type": "string",
-            "example": "PIN"
-          },
-          "Mensaje": {
-            "type": "string",
-            "example": "Pago aprobado"
-          }
+          "NombreComercio": { "type": "string", "example": "TIENDA DEMO" },
+          "CreadaUTC": { "type": "string", "example": "2025-02-18T10:20:00Z" },
+          "IdTransaccion": { "type": "string", "example": "TRX-1024" },
+          "TipoTransaccion": { "type": "string", "example": "TRANSFERENCIA" },
+          "MontoTransaccion": { "type": "number", "example": 150.25 },
+          "MarcaTarjeta": { "type": "string", "example": "VISA" },
+          "NumeroTarjeta": { "type": "string", "example": "**** **** **** 1111" },
+          "NumeroAutorizacion": { "type": "string", "example": "AUTH-384920" },
+          "NombreEstado": { "type": "string", "example": "ACEPTADA" },
+          "Firma": { "type": "string", "example": "PIN" },
+          "Mensaje": { "type": "string", "example": "Pago aprobado" }
         }
       }
     }
