@@ -23,10 +23,9 @@ interface TransaccionResponse {
   MontoTransaccion: number;
   MarcaTarjeta: string;
   NumeroTarjeta: string;
-  NumeroAutorizacion: string;
   NombreEstado: string;
   Firma: string;
-  Mensaje: string;
+  Descripcion: string;
 }
 
 interface TarjetaJoin {
@@ -51,8 +50,13 @@ interface TarjetaJoin {
 
 type SupabaseClient = ReturnType<typeof getSupabaseServer>;
 
+type TransaccionRowMin = {
+  id_transaccion: number;
+  creada_utc: string;
+};
+
 // ---------------------------------------------------------------------------
-// Helper: registrar transacción RECHAZADA en la tabla transacciones
+// Helper: registrar transacción RECHAZADA y devolver id/fecha
 // ---------------------------------------------------------------------------
 async function registrarTransaccionRechazada(
   supabase: SupabaseClient,
@@ -60,7 +64,7 @@ async function registrarTransaccionRechazada(
   mensaje: string,
   origen?: TarjetaJoin | null,
   destino?: TarjetaJoin | null
-) {
+): Promise<TransaccionRowMin | null> {
   try {
     // Buscar ID de estado RECHAZADA
     const { data: edoRow } = await supabase
@@ -82,7 +86,7 @@ async function registrarTransaccionRechazada(
         .select("id_tarjeta")
         .eq("numero_tarjeta", body.NumeroTarjetaOrigen)
         .limit(1);
-      const tarjeta = data?.[0];
+      const tarjeta = data?.[0] as { id_tarjeta: number } | undefined;
       if (tarjeta) idTarjetaOrigen = tarjeta.id_tarjeta;
     }
 
@@ -93,7 +97,7 @@ async function registrarTransaccionRechazada(
         .select("id_tarjeta")
         .eq("numero_tarjeta", body.NumeroTarjetaDestino)
         .limit(1);
-      const tarjeta = data?.[0];
+      const tarjeta = data?.[0] as { id_tarjeta: number } | undefined;
       if (tarjeta) idTarjetaDestino = tarjeta.id_tarjeta;
     }
 
@@ -107,22 +111,34 @@ async function registrarTransaccionRechazada(
       ? mensaje
       : `${mensaje} (monto original inválido: ${body.Monto})`;
 
-    await supabase.from("transacciones").insert({
-      tipo: "TRANSFERENCIA",
-      monto: montoLog,
-      id_tarjeta_origen: idTarjetaOrigen,
-      id_tarjeta_destino: idTarjetaDestino,
-      descripcion,
-      id_estado_transaccion: idEstado,
-    });
+    const { data: trx, error } = await supabase
+      .from("transacciones")
+      .insert({
+        tipo: "TRANSFERENCIA",
+        monto: montoLog,
+        id_tarjeta_origen: idTarjetaOrigen,
+        id_tarjeta_destino: idTarjetaDestino,
+        descripcion,
+        id_estado_transaccion: idEstado,
+      })
+      .select("id_transaccion,creada_utc")
+      .single<TransaccionRowMin>();
+
+    if (error || !trx) {
+      console.error("No se pudo registrar transacción rechazada", error);
+      return null;
+    }
+
+    return trx;
   } catch (err) {
     console.error("No se pudo registrar transacción rechazada", err);
     // No rompemos la respuesta al cliente si el log falla
+    return null;
   }
 }
 
 // ---------------------------------------------------------------------------
-// Helper: usa el de arriba + devuelve el error al cliente
+// Helper: construir voucher (TransaccionResponse) para RECHAZADA
 // ---------------------------------------------------------------------------
 async function responderErrorValidacion(
   supabase: SupabaseClient,
@@ -132,8 +148,42 @@ async function responderErrorValidacion(
   origen?: TarjetaJoin | null,
   destino?: TarjetaJoin | null
 ) {
-  await registrarTransaccionRechazada(supabase, body, mensaje, origen, destino);
-  return NextResponse.json({ Mensaje: mensaje }, { status });
+  const trx = await registrarTransaccionRechazada(
+    supabase,
+    body,
+    mensaje,
+    origen,
+    destino
+  );
+
+  const ult4Destino =
+    destino?.numero_tarjeta?.slice(-4) ??
+    body.NumeroTarjetaDestino?.slice(-4) ??
+    "";
+
+  const idBonito = trx
+    ? String(trx.id_transaccion).padStart(6, "0")
+    : "000000";
+
+  const creadaUtcIso = trx
+    ? new Date(trx.creada_utc).toISOString()
+    : new Date().toISOString();
+
+  const respuesta: TransaccionResponse = {
+    CreadaUTC: creadaUtcIso,
+    IdTransaccion: trx ? `TRX-${idBonito}` : "TRX-ERROR",
+    TipoTransaccion: "Transferencia",
+    MontoTransaccion: Number(body.Monto) || 0,
+    MarcaTarjeta: "BBVA",
+    NumeroTarjeta: ult4Destino
+      ? `**** **** **** ${ult4Destino}`
+      : "**** **** **** ****",
+    NombreEstado: "RECHAZADA",
+    Firma: "NIP",
+    Descripcion: mensaje,
+  };
+
+  return NextResponse.json(respuesta, { status });
 }
 
 // ---------------------------------------------------------------------------
@@ -431,10 +481,9 @@ export async function POST(req: NextRequest) {
         id_estado_transaccion: idEstado,
       })
       .select("id_transaccion,creada_utc")
-      .single();
+      .single<TransaccionRowMin>();
 
     if (trxErr || !trx) {
-      // rollback saldos si no se pudo registrar la transacción
       await supabase
         .from("cuentas")
         .update({ saldo_actual: saldoOrigen })
@@ -464,19 +513,16 @@ export async function POST(req: NextRequest) {
       MontoTransaccion: Number(body.Monto),
       MarcaTarjeta: "BBVA",
       NumeroTarjeta: `**** **** **** ${ult4}`,
-      NumeroAutorizacion: `AUTH-${Math.floor(
-        100000 + Math.random() * 900000
-      )}`,
       NombreEstado: "COMPLETADA",
       Firma: "NIP",
-      Mensaje: "Transferencia realizada con éxito",
+      Descripcion: "Transferencia realizada con éxito",
     };
 
     return NextResponse.json(respuesta, { status: 200 });
   } catch (error) {
     const detalle = error instanceof Error ? error.message : String(error);
     return NextResponse.json(
-      { Mensaje: "Error interno del servidor", Detalle: detalle },
+      { error: "Error interno del servidor", detalle },
       { status: 500 }
     );
   }
