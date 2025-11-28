@@ -21,7 +21,6 @@ interface TransaccionResponse {
   IdTransaccion: string;
   TipoTransaccion: string;
   MontoTransaccion: number;
-  MarcaTarjeta: string;
   NumeroTarjeta: string;
   NombreEstado: string;
   Firma: string;
@@ -174,7 +173,6 @@ async function responderErrorValidacion(
     IdTransaccion: trx ? `TRX-${idBonito}` : "TRX-ERROR",
     TipoTransaccion: "Transferencia",
     MontoTransaccion: Number(body.Monto) || 0,
-    MarcaTarjeta: "BBVA",
     NumeroTarjeta: ult4Destino
       ? `**** **** **** ${ult4Destino}`
       : "**** **** **** ****",
@@ -511,7 +509,6 @@ export async function POST(req: NextRequest) {
       IdTransaccion: `TRX-${idBonito}`,
       TipoTransaccion: "Transferencia",
       MontoTransaccion: Number(body.Monto),
-      MarcaTarjeta: "BBVA",
       NumeroTarjeta: `**** **** **** ${ult4}`,
       NombreEstado: "COMPLETADA",
       Firma: "NIP",
