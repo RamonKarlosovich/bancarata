@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* Variante dark para Tailwind */
 @custom-variant dark (&:is(.dark *));
 
 :root {
@@ -38,12 +39,12 @@
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
 
-  /* INVERATBANK Custom Colors */
-  --inveratbank-primary: #0f1b2e;
-  --inveratbank-gold: #d4af37;
-  --inveratbank-cream: #f5f1e8;
-  --inveratbank-dark: #0a0e1a;
-  --inveratbank-light: #fafaf8;
+  /* BANCARATA Custom Colors */
+  --bancarata-primary: #0f1b2e;
+  --bancarata-gold: #d4af37;
+  --bancarata-cream: #f5f1e8;
+  --bancarata-dark: #0a0e1a;
+  --bancarata-light: #fafaf8;
 }
 
 .dark {
@@ -81,6 +82,7 @@
   --sidebar-ring: oklch(0.439 0 0);
 }
 
+/* Mapeo de variables para Tailwind (tema inline) */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -120,6 +122,7 @@
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
+/* Estilos base usando Tailwind (@apply) */
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -129,7 +132,10 @@
   }
 }
 
-/* INVERATBANK Custom Styles */
+/* ========================= */
+/*  BANCARATA Custom Styles  */
+/* ========================= */
+
 * {
   margin: 0;
   padding: 0;
@@ -141,8 +147,8 @@ html {
 }
 
 body {
-  background-color: var(--inveratbank-primary);
-  color: var(--inveratbank-cream);
+  background-color: var(--bancarata-primary);
+  color: var(--bancarata-cream);
   font-family: inherit;
   line-height: 1.6;
 }
@@ -152,11 +158,11 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--inveratbank-dark);
+  background: var(--bancarata-dark);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--inveratbank-gold);
+  background: var(--bancarata-gold);
   border-radius: 4px;
 }
 
@@ -176,7 +182,7 @@ button {
 }
 
 a {
-  color: var(--inveratbank-gold);
+  color: var(--bancarata-gold);
   text-decoration: none;
   transition: color 0.3s ease;
 }

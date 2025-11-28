@@ -20,7 +20,7 @@ export default function ServiceDashboard() {
       <div className="border-b border-[#D4AF37]/20 sticky top-0 z-40 bg-[#0F1B2E]/80 backdrop-blur">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <Image src="/logo.png" alt="INVERATBANK" width={40} height={40} />
+            <Image src="/logo.png" alt="BANCARATA" width={40} height={40} />
             <span className="text-[#D4AF37] font-bold">
               Panel de {service.charAt(0).toUpperCase() + service.slice(1)}
             </span>
@@ -51,7 +51,7 @@ export default function ServiceDashboard() {
 
           <p className="text-[#F5F1E8]/70 mb-8">
             Desde aquí puedes procesar pagos de tus clientes. Los datos se enviarán directamente al sistema bancario
-            INVERATBANK.
+            BANCARATA.
           </p>
 
           <Link

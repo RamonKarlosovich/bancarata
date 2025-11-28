@@ -58,7 +58,7 @@ export default function AdminDashboard() {
       <div className="border-b border-[#D4AF37]/20 sticky top-0 z-40 bg-[#0F1B2E]/80 backdrop-blur">
         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <Image src="/logo.png" alt="INVERATBANK" width={40} height={40} />
+            <Image src="/logo.png" alt="BANCARATA" width={40} height={40} />
             <span className="text-[#D4AF37] font-bold">Admin Dashboard</span>
           </div>
           <button
