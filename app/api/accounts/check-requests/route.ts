@@ -1,13 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-// Simulando base de datos en memoria (en producción usarías MongoDB)
 const accountRequests = new Map()
-
 export async function POST(request: NextRequest) {
   try {
     const { nombreCompleto, numeroINE } = await request.json()
-
-    // Verificar si ya existe una solicitud pendiente
     const existingRequest = Array.from(accountRequests.values()).find(
       (req: any) => req.numeroINE === numeroINE && req.status === 'pending'
     )
@@ -18,7 +13,6 @@ export async function POST(request: NextRequest) {
         { status: 200 }
       )
     }
-
     return NextResponse.json(
       { hasPendingRequest: false },
       { status: 200 }
@@ -30,7 +24,6 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-
 export async function PUT(request: NextRequest) {
   try {
     const { numeroINE, formData } = await request.json()
@@ -42,7 +35,6 @@ export async function PUT(request: NextRequest) {
       status: 'pending',
       createdAt: new Date(),
     })
-
     return NextResponse.json(
       { success: true, requestId },
       { status: 201 }
