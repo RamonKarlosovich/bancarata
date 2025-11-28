@@ -59,7 +59,6 @@
       "TransaccionRequest": {
         "type": "object",
         "required": [
-          "NombreComercio",
           "NumeroTarjetaOrigen",
           "NumeroTarjetaDestino",
           "NombreCliente",
@@ -69,10 +68,6 @@
           "Monto"
         ],
         "properties": {
-          "NombreComercio": {
-            "type": "string",
-            "example": "TIENDA DEMO"
-          },
           "NumeroTarjetaOrigen": {
             "type": "string",
             "example": "4111111111111111"
