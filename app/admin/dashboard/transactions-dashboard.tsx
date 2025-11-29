@@ -146,10 +146,10 @@ export default function AdminTransactionsDashboard() {
   }, [transactions, stats]);
 
   return (
-    <div className="relative flex min-h-[calc(100vh-72px)] flex-col bg-[#0F1B2E] text-[#F5F1E8]">
-      {/* Contenido con scroll (dejamos espacio abajo para los indicadores) */}
-      <div className="flex-1 overflow-auto pb-44">
-        <div className="mx-auto max-w-7xl px-6 py-8 space-y-8">
+    <div className="relative flex min-h-[calc(100vh-64px)] flex-col bg-[#0F1B2E] text-[#F5F1E8]">
+      {/* Contenido con scroll; dejamos espacio abajo para los indicadores */}
+      <div className="flex-1 overflow-auto pb-40">
+        <div className="mx-auto max-w-7xl space-y-8 px-6 py-8">
           {/* Filtros de búsqueda */}
           <div className="space-y-4 rounded-lg border border-[#D4AF37]/30 bg-[#0F1B2E]/70 p-6 backdrop-blur">
             <div className="mb-2 flex items-center gap-2">
@@ -352,8 +352,7 @@ export default function AdminTransactionsDashboard() {
                         </td>
                         <td className="px-6 py-3 text-xs text-[#F5F1E8]/80">
                           {tx.numero_tarjeta
-                            ? "**** **** **** " +
-                              tx.numero_tarjeta.slice(-4)
+                            ? "**** **** **** " + tx.numero_tarjeta.slice(-4)
                             : "—"}
                         </td>
                         <td className="px-6 py-3 font-bold text-[#D4AF37]">
@@ -386,7 +385,7 @@ export default function AdminTransactionsDashboard() {
       </div>
 
       {/* Indicadores fijados abajo y centrados */}
-      <div className="pointer-events-none fixed bottom-4 left-1/2 z-30 w-full max-w-7xl -translate-x-1/2 px-4">
+      <div className="pointer-events-none fixed bottom-4 left-1/2 z-30 w-full max-w-6xl -translate-x-1/2 px-4">
         <div className="pointer-events-auto grid gap-4 md:grid-cols-4">
           <div className="rounded-lg bg-blue-600 px-4 py-3 text-white shadow-lg">
             <p className="text-sm font-semibold">Total Transacciones</p>

@@ -9,23 +9,23 @@ export default function AdminDashboardPage() {
   const router = useRouter();
 
   const handleLogout = () => {
-    // Limpia token en navegador
+    // Limpia token almacenado en el navegador
     if (typeof window !== "undefined") {
       localStorage.removeItem("auth-token");
     }
 
-    // Borra cookie del token
+    // Elimina cookie auth-token
     document.cookie = "auth-token=; Max-Age=0; path=/";
 
-    // Regresa a la página principal (NO al login)
+    // Regresa a la página principal (no al login)
     router.push("/");
   };
 
   return (
     <div className="flex min-h-screen flex-col bg-gradient-to-b from-[#0F1B2E] via-[#1a2a45] to-[#0F1B2E] text-[#F5F1E8]">
-      {/* Header fijo arriba */}
+      {/* Header fijo arriba, ancho completo */}
       <header className="sticky top-0 z-40 border-b border-[#D4AF37]/30 bg-[#0F1B2E]/80 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
+        <div className="flex w-full items-center justify-between px-6 py-4">
           <div className="flex items-center gap-3">
             <Image src="/logo.png" alt="BANCARATA" width={40} height={40} />
             <div className="leading-tight">
@@ -48,7 +48,7 @@ export default function AdminDashboardPage() {
         </div>
       </header>
 
-      {/* Contenido (el dashboard real) */}
+      {/* Contenido del panel */}
       <main className="flex-1">
         <AdminTransactionsDashboard />
       </main>
