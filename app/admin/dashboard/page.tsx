@@ -5,6 +5,14 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { LogOut, RefreshCw, Search } from "lucide-react";
 
+// TS no tiene tipos para esta librería, ignoramos el chequeo en este import
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import { DateRange } from "react-date-range";
+import { es } from "date-fns/locale";
+import "react-date-range/dist/styles.css";
+import "react-date-range/dist/theme/default.css";
+
 type TransactionStatus = "COMPLETADA" | "RECHAZADA" | "PENDIENTE";
 
 interface Transaction {
@@ -44,6 +52,15 @@ export default function AdminDashboardPage() {
   // Modal de rango de fechas
   const [showDatePicker, setShowDatePicker] = useState(false);
 
+  // Rango que usa el componente <DateRange />
+  const [dateRange, setDateRange] = useState([
+    {
+      startDate: new Date(),
+      endDate: new Date(),
+      key: "selection" as const,
+    },
+  ]);
+
   const fetchTransactions = async () => {
     try {
       setLoading(true);
@@ -51,7 +68,6 @@ export default function AdminDashboardPage() {
       if (!response.ok) throw new Error("Error fetching transactions");
 
       const data = await response.json();
-
       const lista = (data.transacciones ?? data ?? []) as Transaction[];
       setTransactions(lista);
 
@@ -86,7 +102,7 @@ export default function AdminDashboardPage() {
     setHasta("");
   };
 
-  // ======== FILTROS EN MEMORIA =========
+  // ======== FILTRO EN MEMORIA =========
   const filteredTransactions = useMemo(() => {
     return transactions.filter((tx) => {
       if (idTransaccion.trim()) {
@@ -102,9 +118,7 @@ export default function AdminDashboardPage() {
 
       if (tarjeta.trim()) {
         const q = tarjeta.replace(/\s+/g, "").toLowerCase();
-        const num = (tx.numero_tarjeta ?? "")
-          .replace(/\s+/g, "")
-          .toLowerCase();
+        const num = (tx.numero_tarjeta ?? "").replace(/\s+/g, "").toLowerCase();
         if (!num.includes(q)) return false;
       }
 
@@ -165,9 +179,55 @@ export default function AdminDashboardPage() {
         }`
       : "Selecciona un rango de fechas";
 
+  // Sincronizar dateRange con los filtros actuales cuando abres el calendario
+  const openDatePicker = () => {
+    let start = new Date();
+    let end = new Date();
+
+    if (desde) start = new Date(desde + "T00:00:00");
+    if (hasta) end = new Date(hasta + "T00:00:00");
+
+    setDateRange([
+      {
+        startDate: start,
+        endDate: end,
+        key: "selection",
+      },
+    ]);
+
+    setShowDatePicker(true);
+  };
+
+  // Guardar fechas seleccionadas en los filtros (YYYY-MM-DD)
+  const applySelectedRange = () => {
+    const selection = dateRange[0];
+
+    if (selection.startDate) {
+      const d = selection.startDate;
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      setDesde(`${yyyy}-${mm}-${dd}`);
+    } else {
+      setDesde("");
+    }
+
+    if (selection.endDate) {
+      const d = selection.endDate;
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      setHasta(`${yyyy}-${mm}-${dd}`);
+    } else {
+      setHasta("");
+    }
+
+    setShowDatePicker(false);
+  };
+
   return (
     <div className="flex min-h-screen flex-col bg-[#0F1B2E] text-[#F5F1E8]">
-      {/* HEADER FIJO */}
+      {/* HEADER */}
       <header className="sticky top-0 z-40 border-b border-[#D4AF37]/20 bg-[#0F1B2E]/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-3">
@@ -189,7 +249,7 @@ export default function AdminDashboardPage() {
         </div>
       </header>
 
-      {/* CONTENIDO (dejamos padding abajo para los indicadores) */}
+      {/* CONTENIDO */}
       <main className="flex-1 overflow-auto pb-40">
         <div className="mx-auto max-w-7xl space-y-8 px-6 py-6">
           {/* FILTROS */}
@@ -282,7 +342,7 @@ export default function AdminDashboardPage() {
 
                 <button
                   type="button"
-                  onClick={() => setShowDatePicker(true)}
+                  onClick={openDatePicker}
                   className="flex w-full items-center justify-between rounded-lg border border-[#D4AF37]/40 bg-[#0a0e1a] px-3 py-2 text-sm text-[#F5F1E8] outline-none transition hover:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]"
                 >
                   <span className={desde || hasta ? "" : "text-slate-500"}>
@@ -425,56 +485,44 @@ export default function AdminDashboardPage() {
         </div>
       </main>
 
-      {/* MODAL DE RANGO DE FECHAS - SIEMPRE ENCIMA DE TODO */}
+      {/* MODAL DE RANGO DE FECHAS CON <DateRange /> */}
       {showDatePicker && (
         <div
           className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50"
           onClick={() => setShowDatePicker(false)}
         >
           <div
-            className="w-full max-w-md rounded-xl border border-[#D4AF37]/40 bg-[#0F1B2E] p-6 shadow-2xl"
+            className="w-full max-w-3xl rounded-xl border border-[#D4AF37]/40 bg-[#0F1B2E] p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="mb-4 text-lg font-semibold text-[#F5F1E8]">
-              Seleccionar rango de fechas
+              Selecciona rango de fechas
             </h3>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="flex flex-col gap-1">
-                <span className="text-xs font-semibold uppercase tracking-wide text-[#D4AF37]">
-                  Desde
-                </span>
-                <input
-                  type="date"
-                  value={desde}
-                  onChange={(e) => setDesde(e.target.value)}
-                  autoFocus
-                  className="rounded-lg border border-[#D4AF37]/40 bg-[#0a0e1a] px-3 py-2 text-sm text-[#F5F1E8] outline-none focus:ring-2 focus:ring-[#D4AF37]"
-                />
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-xs font-semibold uppercase tracking-wide text-[#D4AF37]">
-                  Hasta
-                </span>
-                <input
-                  type="date"
-                  value={hasta}
-                  onChange={(e) => setHasta(e.target.value)}
-                  className="rounded-lg border border-[#D4AF37]/40 bg-[#0a0e1a] px-3 py-2 text-sm text-[#F5F1E8] outline-none focus:ring-2 focus:ring-[#D4AF37]"
-                />
-              </div>
-            </div>
+            <DateRange
+              ranges={dateRange}
+              onChange={(ranges: any) => {
+                const sel = ranges.selection;
+                setDateRange([sel]);
+              }}
+              months={2}
+              direction="horizontal"
+              moveRangeOnFirstSelection={false}
+              locale={es}
+              editableDateInputs={false}
+            />
 
-            <div className="mt-6 flex justify-between gap-3">
+            <div className="mt-4 flex justify-between gap-3">
               <button
                 type="button"
                 onClick={() => {
                   setDesde("");
                   setHasta("");
+                  setShowDatePicker(false);
                 }}
                 className="rounded-lg border border-[#D4AF37]/40 px-4 py-2 text-xs text-[#F5F1E8] hover:bg-[#1a2a45]"
               >
-                Limpiar fechas
+                Limpiar rango
               </button>
               <div className="flex gap-2">
                 <button
@@ -486,10 +534,10 @@ export default function AdminDashboardPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowDatePicker(false)}
+                  onClick={applySelectedRange}
                   className="rounded-lg bg-[#D4AF37] px-4 py-2 text-xs font-semibold text-[#0F1B2E] hover:bg-[#c99a2e]"
                 >
-                  Aplicar
+                  Guardar rango
                 </button>
               </div>
             </div>
@@ -497,7 +545,7 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {/* INDICADORES FIJOS ABAJO (SOLO SI NO HAY MODAL DE FECHAS) */}
+      {/* INDICADORES FIJOS ABAJO (se ocultan cuando el modal está abierto) */}
       {!showDatePicker && (
         <div className="pointer-events-none fixed bottom-4 left-1/2 z-30 w-full max-w-6xl -translate-x-1/2 px-4">
           <div className="pointer-events-auto grid gap-4 md:grid-cols-4">
