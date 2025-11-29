@@ -41,7 +41,7 @@ export default function AdminDashboardPage() {
   const [desde, setDesde] = useState(""); // YYYY-MM-DD
   const [hasta, setHasta] = useState(""); // YYYY-MM-DD
 
-  // Modal para rango de fechas
+  // Modal de rango de fechas
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const fetchTransactions = async () => {
@@ -71,7 +71,6 @@ export default function AdminDashboardPage() {
     fetchTransactions();
   }, []);
 
-  // SALIR → borra token y vuelve al home
   const handleLogout = () => {
     localStorage.removeItem("auth-token");
     window.location.href = "/";
@@ -426,10 +425,10 @@ export default function AdminDashboardPage() {
         </div>
       </main>
 
-      {/* MODAL DE RANGO DE FECHAS (SIEMPRE ENCIMA DE TODO) */}
+      {/* MODAL DE RANGO DE FECHAS - SIEMPRE ENCIMA DE TODO */}
       {showDatePicker && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
+          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50"
           onClick={() => setShowDatePicker(false)}
         >
           <div
@@ -498,38 +497,40 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {/* INDICADORES FIJOS ABAJO */}
-      <div className="pointer-events-none fixed bottom-4 left-1/2 z-30 w-full max-w-6xl -translate-x-1/2 px-4">
-        <div className="pointer-events-auto grid gap-4 md:grid-cols-4">
-          <div className="rounded-lg bg-blue-600 px-4 py-3 text-white shadow-lg">
-            <p className="text-sm font-semibold">Total Transacciones</p>
-            <p className="mt-1 text-3xl font-bold leading-none">
-              {computedStats.total}
-            </p>
-          </div>
+      {/* INDICADORES FIJOS ABAJO (SOLO SI NO HAY MODAL DE FECHAS) */}
+      {!showDatePicker && (
+        <div className="pointer-events-none fixed bottom-4 left-1/2 z-30 w-full max-w-6xl -translate-x-1/2 px-4">
+          <div className="pointer-events-auto grid gap-4 md:grid-cols-4">
+            <div className="rounded-lg bg-blue-600 px-4 py-3 text-white shadow-lg">
+              <p className="text-sm font-semibold">Total Transacciones</p>
+              <p className="mt-1 text-3xl font-bold leading-none">
+                {computedStats.total}
+              </p>
+            </div>
 
-          <div className="rounded-lg bg-green-600 px-4 py-3 text-white shadow-lg">
-            <p className="text-sm font-semibold">Exitosas</p>
-            <p className="mt-1 text-3xl font-bold leading-none">
-              {computedStats.aprobadas}
-            </p>
-          </div>
+            <div className="rounded-lg bg-green-600 px-4 py-3 text-white shadow-lg">
+              <p className="text-sm font-semibold">Exitosas</p>
+              <p className="mt-1 text-3xl font-bold leading-none">
+                {computedStats.aprobadas}
+              </p>
+            </div>
 
-          <div className="rounded-lg bg-red-600 px-4 py-3 text-white shadow-lg">
-            <p className="text-sm font-semibold">Rechazadas</p>
-            <p className="mt-1 text-3xl font-bold leading-none">
-              {computedStats.rechazadas}
-            </p>
-          </div>
+            <div className="rounded-lg bg-red-600 px-4 py-3 text-white shadow-lg">
+              <p className="text-sm font-semibold">Rechazadas</p>
+              <p className="mt-1 text-3xl font-bold leading-none">
+                {computedStats.rechazadas}
+              </p>
+            </div>
 
-          <div className="rounded-lg bg-gradient-to-br from-[#D4AF37] to-yellow-600 px-4 py-3 text-[#0F1B2E] shadow-lg">
-            <p className="text-sm font-semibold">Monto Total Aprobado</p>
-            <p className="mt-1 text-3xl font-extrabold leading-none">
-              ${computedStats.monto_total.toFixed(2)}
-            </p>
+            <div className="rounded-lg bg-gradient-to-br from-[#D4AF37] to-yellow-600 px-4 py-3 text-[#0F1B2E] shadow-lg">
+              <p className="text-sm font-semibold">Monto Total Aprobado</p>
+              <p className="mt-1 text-3xl font-extrabold leading-none">
+                ${computedStats.monto_total.toFixed(2)}
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
