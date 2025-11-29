@@ -283,10 +283,8 @@ export default function AdminDashboardPage() {
                 <label className="text-xs font-semibold uppercase tracking-wide text-[#D4AF37]">
                   Rango de fechas
                 </label>
-                <DateRangeFilter
-                  key={`${desde}-${hasta}`} // para reset visual cuando limpias filtros
-                  onChange={handleDateRangeChange}
-                />
+                {/* IMPORTANTE: sin 'key' aquí */}
+                <DateRangeFilter onChange={handleDateRangeChange} />
               </div>
 
               {/* Botones generales */}
