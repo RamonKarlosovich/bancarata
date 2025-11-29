@@ -70,7 +70,7 @@ export default function AdminDashboardPage() {
     window.location.href = "/";
   };
 
-  const handleResetFilters = () => {
+  const clearFilterState = () => {
     setCliente("");
     setTarjeta("");
     setServicio("");
@@ -80,7 +80,18 @@ export default function AdminDashboardPage() {
     setHasta("");
   };
 
-  // cuando cambia el rango desde el DateRangeFilter
+  const handleResetFilters = () => {
+    // Limpia filtros pero NO vuelve a pedir al backend
+    clearFilterState();
+  };
+
+  const handleShowAll = () => {
+    // Limpia filtros y vuelve a cargar todas las transacciones desde el backend
+    clearFilterState();
+    fetchTransactions();
+  };
+
+  // cuando cambia el rango desde el DateRangeFilter (al pulsar "Guardar rango" o "Limpiar rango")
   const handleDateRangeChange = (range: {
     from: Date | null;
     to: Date | null;
@@ -283,12 +294,18 @@ export default function AdminDashboardPage() {
                 <label className="text-xs font-semibold uppercase tracking-wide text-[#D4AF37]">
                   Rango de fechas
                 </label>
-                {/* IMPORTANTE: sin 'key' aquí */}
                 <DateRangeFilter onChange={handleDateRangeChange} />
               </div>
 
               {/* Botones generales */}
               <div className="flex items-end gap-3">
+                <button
+                  type="button"
+                  onClick={handleShowAll}
+                  className="flex-1 rounded-lg border border-[#D4AF37]/40 px-4 py-2 text-sm text-[#F5F1E8] transition hover:bg-[#1a2a45]"
+                >
+                  Mostrar todos
+                </button>
                 <button
                   type="button"
                   onClick={handleResetFilters}

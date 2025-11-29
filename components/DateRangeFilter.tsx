@@ -1,12 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
-type DateParts = {
-  day: number | "";
-  month: number | "";
-  year: number | "";
-};
+type Part = string; // "","01","02",...,"2025"
 
 interface DateRangeFilterProps {
   onChange?: (range: { from: Date | null; to: Date | null }) => void;
@@ -15,155 +11,88 @@ interface DateRangeFilterProps {
 const today = new Date();
 const CURRENT_YEAR = today.getFullYear();
 
-// Años disponibles (ajusta si necesitas más historial)
-const YEARS = Array.from({ length: 25 }, (_, i) => CURRENT_YEAR - i);
+// Años disponibles
+const YEARS = Array.from({ length: 25 }, (_, i) =>
+  String(CURRENT_YEAR - i)
+);
 
 const MONTHS = [
-  { value: 1, label: "Enero" },
-  { value: 2, label: "Febrero" },
-  { value: 3, label: "Marzo" },
-  { value: 4, label: "Abril" },
-  { value: 5, label: "Mayo" },
-  { value: 6, label: "Junio" },
-  { value: 7, label: "Julio" },
-  { value: 8, label: "Agosto" },
-  { value: 9, label: "Septiembre" },
-  { value: 10, label: "Octubre" },
-  { value: 11, label: "Noviembre" },
-  { value: 12, label: "Diciembre" },
+  { value: "01", label: "Enero" },
+  { value: "02", label: "Febrero" },
+  { value: "03", label: "Marzo" },
+  { value: "04", label: "Abril" },
+  { value: "05", label: "Mayo" },
+  { value: "06", label: "Junio" },
+  { value: "07", label: "Julio" },
+  { value: "08", label: "Agosto" },
+  { value: "09", label: "Septiembre" },
+  { value: "10", label: "Octubre" },
+  { value: "11", label: "Noviembre" },
+  { value: "12", label: "Diciembre" },
 ];
 
-function getDaysInMonth(month: number, year: number) {
-  if (!month || !year) return 31;
-  return new Date(year, month, 0).getDate();
-}
-
-function buildDate(parts: DateParts): Date | null {
-  const { day, month, year } = parts;
+function buildDate(day: Part, month: Part, year: Part): Date | null {
   if (!day || !month || !year) return null;
-  const d = new Date(year, month - 1, day);
+  const y = Number(year);
+  const m = Number(month);
+  const d = Number(day);
+  const dt = new Date(y, m - 1, d);
+  // Validar que la fecha existe (ej. 31/02 no es válido)
   if (
-    d.getFullYear() !== year ||
-    d.getMonth() !== month - 1 ||
-    d.getDate() !== day
+    dt.getFullYear() !== y ||
+    dt.getMonth() !== m - 1 ||
+    dt.getDate() !== d
   ) {
     return null;
   }
-  return d;
+  return dt;
 }
 
 export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
-  const [fromParts, setFromParts] = useState<DateParts>({
-    day: "",
-    month: "",
-    year: "",
-  });
+  // DESDE
+  const [fromDay, setFromDay] = useState<Part>("");
+  const [fromMonth, setFromMonth] = useState<Part>("");
+  const [fromYear, setFromYear] = useState<Part>("");
 
-  const [toParts, setToParts] = useState<DateParts>({
-    day: "",
-    month: "",
-    year: "",
-  });
+  // HASTA
+  const [toDay, setToDay] = useState<Part>("");
+  const [toMonth, setToMonth] = useState<Part>("");
+  const [toYear, setToYear] = useState<Part>("");
 
-  const fromDate = useMemo(() => buildDate(fromParts), [fromParts]);
-  const toDate = useMemo(() => buildDate(toParts), [toParts]);
+  const handleSave = () => {
+    let from = buildDate(fromDay, fromMonth, fromYear);
+    let to = buildDate(toDay, toMonth, toYear);
 
-  // Días válidos para DESDE
-  const fromDays = useMemo(
-    () => getDaysInMonth(fromParts.month as number, fromParts.year as number),
-    [fromParts.month, fromParts.year]
-  );
-
-  // Días válidos para HASTA (limitado por HOY si corresponde)
-  const toDays = useMemo(() => {
-    const maxDays = getDaysInMonth(
-      toParts.month as number,
-      toParts.year as number
-    );
-    if (
-      toParts.year === CURRENT_YEAR &&
-      toParts.month === today.getMonth() + 1
-    ) {
-      return Math.min(maxDays, today.getDate());
-    }
-    return maxDays;
-  }, [toParts.month, toParts.year]);
-
-  function notifyChange(updatedFrom: Date | null, updatedTo: Date | null) {
-    if (onChange) {
-      onChange({ from: updatedFrom, to: updatedTo });
-    }
-  }
-
-  function handleFromChange(field: keyof DateParts, value: number | ""): void {
-    const updated: DateParts = { ...fromParts, [field]: value };
-
-    // Ajustar día si se pasa de los días del mes
-    const maxDays = getDaysInMonth(
-      updated.month as number,
-      updated.year as number
-    );
-    if (updated.day && updated.day > maxDays) {
-      updated.day = maxDays;
-    }
-
-    setFromParts(updated);
-
-    const newFromDate = buildDate(updated);
-    const newToDate = toDate; // no tocamos HASTA, solo notificamos
-
-    notifyChange(newFromDate, newToDate);
-  }
-
-  function handleToChange(field: keyof DateParts, value: number | ""): void {
-    const updated: DateParts = { ...toParts, [field]: value };
-
-    // No permitir años futuros
-    if (field === "year" && typeof value === "number" && value > CURRENT_YEAR) {
-      return;
-    }
-
-    const maxDays = getDaysInMonth(
-      updated.month as number,
-      updated.year as number
-    );
-    if (updated.day && updated.day > maxDays) {
-      updated.day = maxDays;
-    }
-
-    // En año/mes actuales, día máximo = hoy
-    if (
-      updated.year === CURRENT_YEAR &&
-      updated.month === today.getMonth() + 1 &&
-      updated.day &&
-      updated.day > today.getDate()
-    ) {
-      updated.day = today.getDate();
-    }
-
-    setToParts(updated);
-
-    const newToDate = buildDate(updated);
-    const newFromDate = fromDate; // no tocamos DESDE, solo notificamos
-
-    // Si HASTA > hoy, lo recortamos a hoy en el valor enviado (no tocamos selects)
-    let finalToDate = newToDate;
-    if (finalToDate && finalToDate > today) {
-      finalToDate = new Date(
+    // Limitar HASTA a hoy
+    if (to && to > today) {
+      to = new Date(
         today.getFullYear(),
         today.getMonth(),
         today.getDate()
       );
     }
 
-    notifyChange(newFromDate, finalToDate);
-  }
+    // Si ambas existen y HASTA < DESDE, forzar HASTA = DESDE
+    if (from && to && to < from) {
+      to = new Date(
+        from.getFullYear(),
+        from.getMonth(),
+        from.getDate()
+      );
+    }
 
-  function handleClear() {
-    setFromParts({ day: "", month: "", year: "" });
-    setToParts({ day: "", month: "", year: "" });
-    notifyChange(null, null);
-  }
+    onChange?.({ from: from ?? null, to: to ?? null });
+  };
+
+  const handleClear = () => {
+    setFromDay("");
+    setFromMonth("");
+    setFromYear("");
+    setToDay("");
+    setToMonth("");
+    setToYear("");
+    onChange?.({ from: null, to: null });
+  };
 
   return (
     <div className="bg-slate-900 border border-slate-700 rounded-xl p-4 text-sm text-slate-100">
@@ -178,31 +107,24 @@ export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
           <div className="flex gap-2">
             <select
               className="flex-1 bg-slate-800 border border-slate-600 rounded-md px-2 py-1"
-              value={fromParts.day}
-              onChange={(e) =>
-                handleFromChange(
-                  "day",
-                  e.target.value ? Number(e.target.value) : ""
-                )
-              }
+              value={fromDay}
+              onChange={(e) => setFromDay(e.target.value)}
             >
               <option value="">Día</option>
-              {Array.from({ length: fromDays }, (_, i) => i + 1).map((d) => (
-                <option key={d} value={d}>
-                  {d.toString().padStart(2, "0")}
-                </option>
-              ))}
+              {Array.from({ length: 31 }, (_, i) => {
+                const d = (i + 1).toString().padStart(2, "0");
+                return (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                );
+              })}
             </select>
 
             <select
               className="flex-1 bg-slate-800 border border-slate-600 rounded-md px-2 py-1"
-              value={fromParts.month}
-              onChange={(e) =>
-                handleFromChange(
-                  "month",
-                  e.target.value ? Number(e.target.value) : ""
-                )
-              }
+              value={fromMonth}
+              onChange={(e) => setFromMonth(e.target.value)}
             >
               <option value="">Mes</option>
               {MONTHS.map((m) => (
@@ -214,13 +136,8 @@ export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
 
             <select
               className="flex-1 bg-slate-800 border border-slate-600 rounded-md px-2 py-1"
-              value={fromParts.year}
-              onChange={(e) =>
-                handleFromChange(
-                  "year",
-                  e.target.value ? Number(e.target.value) : ""
-                )
-              }
+              value={fromYear}
+              onChange={(e) => setFromYear(e.target.value)}
             >
               <option value="">Año</option>
               {YEARS.map((y) => (
@@ -240,31 +157,24 @@ export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
           <div className="flex gap-2">
             <select
               className="flex-1 bg-slate-800 border border-slate-600 rounded-md px-2 py-1"
-              value={toParts.day}
-              onChange={(e) =>
-                handleToChange(
-                  "day",
-                  e.target.value ? Number(e.target.value) : ""
-                )
-              }
+              value={toDay}
+              onChange={(e) => setToDay(e.target.value)}
             >
               <option value="">Día</option>
-              {Array.from({ length: toDays }, (_, i) => i + 1).map((d) => (
-                <option key={d} value={d}>
-                  {d.toString().padStart(2, "0")}
-                </option>
-              ))}
+              {Array.from({ length: 31 }, (_, i) => {
+                const d = (i + 1).toString().padStart(2, "0");
+                return (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                );
+              })}
             </select>
 
             <select
               className="flex-1 bg-slate-800 border border-slate-600 rounded-md px-2 py-1"
-              value={toParts.month}
-              onChange={(e) =>
-                handleToChange(
-                  "month",
-                  e.target.value ? Number(e.target.value) : ""
-                )
-              }
+              value={toMonth}
+              onChange={(e) => setToMonth(e.target.value)}
             >
               <option value="">Mes</option>
               {MONTHS.map((m) => (
@@ -276,13 +186,8 @@ export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
 
             <select
               className="flex-1 bg-slate-800 border border-slate-600 rounded-md px-2 py-1"
-              value={toParts.year}
-              onChange={(e) =>
-                handleToChange(
-                  "year",
-                  e.target.value ? Number(e.target.value) : ""
-                )
-              }
+              value={toYear}
+              onChange={(e) => setToYear(e.target.value)}
             >
               <option value="">Año</option>
               {YEARS.map((y) => (
@@ -314,6 +219,7 @@ export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
           <button
             type="button"
             className="px-3 py-1 rounded-md bg-amber-400 text-slate-900 font-semibold"
+            onClick={handleSave}
           >
             Guardar rango
           </button>
