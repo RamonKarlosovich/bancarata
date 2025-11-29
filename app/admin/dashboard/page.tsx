@@ -2,16 +2,14 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { LogOut, RefreshCw, Search } from "lucide-react";
 
-// TS no tiene tipos para esta librería, ignoramos el chequeo en este import
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-import { DateRange } from "react-date-range";
-import { es } from "date-fns/locale";
-import "react-date-range/dist/styles.css";
-import "react-date-range/dist/theme/default.css";
+import {
+  DateRange,
+  type Range,
+  type RangeKeyDict,
+} from "react-date-range";
+import { es as esLocale } from "date-fns/locale";
 
 type TransactionStatus = "COMPLETADA" | "RECHAZADA" | "PENDIENTE";
 
@@ -34,8 +32,6 @@ interface Stats {
 }
 
 export default function AdminDashboardPage() {
-  const router = useRouter();
-
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -53,11 +49,11 @@ export default function AdminDashboardPage() {
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Rango que usa el componente <DateRange />
-  const [dateRange, setDateRange] = useState([
+  const [dateRange, setDateRange] = useState<Range[]>([
     {
       startDate: new Date(),
       endDate: new Date(),
-      key: "selection" as const,
+      key: "selection",
     },
   ]);
 
@@ -485,7 +481,7 @@ export default function AdminDashboardPage() {
         </div>
       </main>
 
-      {/* MODAL DE RANGO DE FECHAS CON <DateRange /> */}
+      {/* MODAL DE RANGO DE FECHAS */}
       {showDatePicker && (
         <div
           className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50"
@@ -501,15 +497,17 @@ export default function AdminDashboardPage() {
 
             <DateRange
               ranges={dateRange}
-              onChange={(ranges: any) => {
-                const sel = ranges.selection;
+              onChange={(ranges: RangeKeyDict) => {
+                const sel = ranges.selection as Range;
                 setDateRange([sel]);
               }}
               months={2}
               direction="horizontal"
               moveRangeOnFirstSelection={false}
-              locale={es}
+              locale={esLocale}
               editableDateInputs={false}
+              showMonthAndYearPickers={true}
+              showSelectionPreview={true}
             />
 
             <div className="mt-4 flex justify-between gap-3">
@@ -545,7 +543,7 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {/* INDICADORES FIJOS ABAJO (se ocultan cuando el modal está abierto) */}
+      {/* INDICADORES FIJOS ABAJO */}
       {!showDatePicker && (
         <div className="pointer-events-none fixed bottom-4 left-1/2 z-30 w-full max-w-6xl -translate-x-1/2 px-4">
           <div className="pointer-events-auto grid gap-4 md:grid-cols-4">
