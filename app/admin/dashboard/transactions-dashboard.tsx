@@ -1,307 +1,422 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
+import { useState, useEffect, useMemo } from "react";
+import { RefreshCw, Search } from "lucide-react";
+
+type TransactionStatus = "COMPLETADA" | "RECHAZADA" | "PENDIENTE";
 
 interface Transaction {
-  id: number
-  creada_utc: string
-  cliente: string
-  servicio: string
-  numero_tarjeta: string
-  monto: number
-  estado: string
-  descripcion: string
+  id_transaccion: number;
+  creada_utc: string;
+  nombre_cliente?: string | null;
+  servicio?: string | null;
+  numero_tarjeta?: string | null;
+  monto: number;
+  nombre_estado: string;
+  descripcion?: string | null;
 }
 
-interface Filters {
-  id: string
-  cliente: string
-  tarjeta: string
-  servicio: string
-  estado: string
-  desde: string
-  hasta: string
+interface Stats {
+  total: number;
+  aprobadas: number;
+  rechazadas: number;
+  monto_total: number;
 }
 
 export default function AdminTransactionsDashboard() {
-  const [filters, setFilters] = useState<Filters>({
-    id: "",
-    cliente: "",
-    tarjeta: "",
-    servicio: "",
-    estado: "TODOS",
-    desde: "",
-    hasta: "",
-  })
-  const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [loading, setLoading] = useState(false)
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // stats básicos
-  const total = transactions.length
-  const exitosas = transactions.filter((t) => t.estado === "COMPLETADA" || t.estado === "APROBADA").length
-  const rechazadas = transactions.filter((t) => t.estado === "RECHAZADA").length
-  const montoTotal = transactions
-    .filter((t) => t.estado === "COMPLETADA" || t.estado === "APROBADA")
-    .reduce((acc, t) => acc + Number(t.monto || 0), 0)
-
-  const handleChange = (field: keyof Filters, value: string) => {
-    setFilters((prev) => ({ ...prev, [field]: value }))
-  }
-
-  const clearFilters = () => {
-    setFilters({
-      id: "",
-      cliente: "",
-      tarjeta: "",
-      servicio: "",
-      estado: "TODOS",
-      desde: "",
-      hasta: "",
-    })
-  }
+  // ======== FILTROS =========
+  const [cliente, setCliente] = useState(""); // Nombre cliente
+  const [tarjeta, setTarjeta] = useState(""); // Número de tarjeta
+  const [servicio, setServicio] = useState(""); // Mall / Spa / etc
+  const [estado, setEstado] = useState<"todos" | TransactionStatus>("todos");
+  const [idTransaccion, setIdTransaccion] = useState(""); // ID de transacción
+  const [desde, setDesde] = useState(""); // fecha desde
+  const [hasta, setHasta] = useState(""); // fecha hasta
 
   const fetchTransactions = async () => {
     try {
-      setLoading(true)
+      setLoading(true);
+      const response = await fetch("/api/transactions");
+      if (!response.ok) throw new Error("Error fetching transactions");
 
-      const params = new URLSearchParams()
+      const data = await response.json();
 
-      if (filters.id) params.set("id", filters.id)
-      if (filters.cliente) params.set("cliente", filters.cliente)
-      if (filters.tarjeta) params.set("tarjeta", filters.tarjeta)
-      if (filters.servicio) params.set("servicio", filters.servicio)
-      if (filters.estado && filters.estado !== "TODOS") params.set("estado", filters.estado)
-      if (filters.desde) params.set("desde", filters.desde)
-      if (filters.hasta) params.set("hasta", filters.hasta)
+      // El endpoint /api/transactions devuelve { transacciones, stats }
+      const lista = (data.transacciones ?? data ?? []) as Transaction[];
+      setTransactions(lista);
 
-      const res = await fetch(`/api/transactions?${params.toString()}`)
-      if (!res.ok) throw new Error("Error al cargar transacciones")
-
-      const data = (await res.json()) as { transacciones: Transaction[] }
-      setTransactions(data.transacciones ?? [])
-    } catch (err) {
-      console.error(err)
-      setTransactions([])
+      if (data.stats) {
+        setStats(data.stats);
+      } else {
+        setStats(null);
+      }
+    } catch (error) {
+      console.error("Error:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchTransactions()
-  }, [])
+    fetchTransactions();
+  }, []);
+
+  const handleResetFilters = () => {
+    setCliente("");
+    setTarjeta("");
+    setServicio("");
+    setEstado("todos");
+    setIdTransaccion("");
+    setDesde("");
+    setHasta("");
+  };
+
+  // ======== APLICAR FILTROS EN MEMORIA =========
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter((tx) => {
+      // ID transacción (coincidencia parcial)
+      if (idTransaccion.trim()) {
+        const idStr = String(tx.id_transaccion);
+        if (!idStr.includes(idTransaccion.trim())) return false;
+      }
+
+      // Cliente
+      if (cliente.trim()) {
+        const q = cliente.trim().toLowerCase();
+        const nombre = (tx.nombre_cliente ?? "").toLowerCase();
+        if (!nombre.includes(q)) return false;
+      }
+
+      // Tarjeta (últimos dígitos o número completo)
+      if (tarjeta.trim()) {
+        const q = tarjeta.replace(/\s+/g, "").toLowerCase();
+        const num = (tx.numero_tarjeta ?? "")
+          .replace(/\s+/g, "")
+          .toLowerCase();
+        if (!num.includes(q)) return false;
+      }
+
+      // Servicio
+      if (servicio.trim()) {
+        const q = servicio.trim().toLowerCase();
+        const s = (tx.servicio ?? "").toLowerCase();
+        if (!s.includes(q)) return false;
+      }
+
+      // Estado
+      if (estado !== "todos") {
+        if ((tx.nombre_estado ?? "").toUpperCase() !== estado) return false;
+      }
+
+      // Rango de fechas
+      if (desde) {
+        const dDesde = new Date(desde + "T00:00:00");
+        const dTx = new Date(tx.creada_utc);
+        if (dTx < dDesde) return false;
+      }
+      if (hasta) {
+        const dHasta = new Date(hasta + "T23:59:59");
+        const dTx = new Date(tx.creada_utc);
+        if (dTx > dHasta) return false;
+      }
+
+      return true;
+    });
+  }, [transactions, idTransaccion, cliente, tarjeta, servicio, estado, desde, hasta]);
+
+  // ======== STATS (si el backend no los manda) =========
+  const computedStats = useMemo(() => {
+    if (stats) return stats;
+    const total = transactions.length;
+    const aprobadas = transactions.filter(
+      (t) => t.nombre_estado === "COMPLETADA"
+    ).length;
+    const rechazadas = transactions.filter(
+      (t) => t.nombre_estado === "RECHAZADA"
+    ).length;
+    const monto_total = transactions
+      .filter((t) => t.nombre_estado === "COMPLETADA")
+      .reduce((sum, t) => sum + (t.monto || 0), 0);
+
+    return { total, aprobadas, rechazadas, monto_total };
+  }, [transactions, stats]);
 
   return (
-    <div className="relative min-h-screen bg-[#0F1B2E] text-[#F5F1E8]">
-      {/* CONTENIDO PRINCIPAL: filtros + tabla */}
-      <div className="max-w-7xl mx-auto px-4 pt-4 pb-44">
-        {/* Filtros */}
-        <section className="mb-4 rounded-xl border border-[#D4AF37]/40 bg-[#0F1B2E]/80 p-4 shadow-lg">
-          <h2 className="mb-2 text-lg font-semibold text-[#F5F1E8]">
-            Filtros de búsqueda avanzada
-          </h2>
-
-          <div className="grid gap-3 md:grid-cols-5 text-xs md:text-sm">
-            {/* ID TRANSACCIÓN */}
-            <div className="flex flex-col">
-              <span className="mb-1 font-semibold text-[#D4AF37]">ID TRANSACCIÓN</span>
-              <input
-                className="rounded-lg border border-[#D4AF37]/40 bg-[#081225] px-3 py-2 text-[#F5F1E8] placeholder:text-[#F5F1E8]/40"
-                placeholder="Ej. 15 o 000015"
-                value={filters.id}
-                onChange={(e) => handleChange("id", e.target.value)}
-              />
+    <div className="relative flex min-h-[calc(100vh-72px)] flex-col bg-[#0F1B2E] text-[#F5F1E8]">
+      {/* Contenido con scroll (dejamos espacio abajo para los indicadores) */}
+      <div className="flex-1 overflow-auto pb-44">
+        <div className="mx-auto max-w-7xl px-6 py-8 space-y-8">
+          {/* Filtros de búsqueda */}
+          <div className="space-y-4 rounded-lg border border-[#D4AF37]/30 bg-[#0F1B2E]/70 p-6 backdrop-blur">
+            <div className="mb-2 flex items-center gap-2">
+              <Search size={18} className="text-[#D4AF37]" />
+              <h2 className="text-lg font-semibold text-[#F5F1E8]">
+                Filtros de búsqueda avanzada
+              </h2>
             </div>
 
-            {/* CLIENTE */}
-            <div className="flex flex-col">
-              <span className="mb-1 font-semibold text-[#D4AF37]">CLIENTE</span>
-              <input
-                className="rounded-lg border border-[#D4AF37]/40 bg-[#081225] px-3 py-2 text-[#F5F1E8] placeholder:text-[#F5F1E8]/40"
-                placeholder="Nombre del cliente"
-                value={filters.cliente}
-                onChange={(e) => handleChange("cliente", e.target.value)}
-              />
-            </div>
-
-            {/* TARJETA */}
-            <div className="flex flex-col">
-              <span className="mb-1 font-semibold text-[#D4AF37]">Nº TARJETA</span>
-              <input
-                className="rounded-lg border border-[#D4AF37]/40 bg-[#081225] px-3 py-2 text-[#F5F1E8] placeholder:text-[#F5F1E8]/40"
-                placeholder="Últimos dígitos"
-                value={filters.tarjeta}
-                onChange={(e) => handleChange("tarjeta", e.target.value)}
-              />
-            </div>
-
-            {/* SERVICIO */}
-            <div className="flex flex-col">
-              <span className="mb-1 font-semibold text-[#D4AF37]">SERVICIO</span>
-              <input
-                className="rounded-lg border border-[#D4AF37]/40 bg-[#081225] px-3 py-2 text-[#F5F1E8] placeholder:text-[#F5F1E8]/40"
-                placeholder="Mall, Spa, Cafetería..."
-                value={filters.servicio}
-                onChange={(e) => handleChange("servicio", e.target.value)}
-              />
-            </div>
-
-            {/* ESTADO */}
-            <div className="flex flex-col">
-              <span className="mb-1 font-semibold text-[#D4AF37]">ESTADO</span>
-              <select
-                className="rounded-lg border border-[#D4AF37]/40 bg-[#081225] px-3 py-2 text-[#F5F1E8]"
-                value={filters.estado}
-                onChange={(e) => handleChange("estado", e.target.value)}
-              >
-                <option value="TODOS">Todos</option>
-                <option value="COMPLETADA">Completada</option>
-                <option value="APROBADA">Aprobada</option>
-                <option value="RECHAZADA">Rechazada</option>
-                <option value="PENDIENTE">Pendiente</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Rango de fechas + botones */}
-          <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-end">
-            <div className="flex flex-1 flex-col md:flex-row md:items-end md:gap-3">
-              <div className="flex flex-1 flex-col">
-                <span className="mb-1 text-xs font-semibold text-[#D4AF37]">DESDE</span>
+            <div className="grid gap-4 md:grid-cols-5">
+              {/* ID Transacción */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold uppercase tracking-wide text-[#D4AF37]">
+                  ID Transacción
+                </label>
                 <input
-                  type="date"
-                  className="rounded-lg border border-[#D4AF37]/40 bg-[#081225] px-3 py-2 text-[#F5F1E8]"
-                  value={filters.desde}
-                  onChange={(e) => handleChange("desde", e.target.value)}
+                  value={idTransaccion}
+                  onChange={(e) => setIdTransaccion(e.target.value)}
+                  placeholder="Ej. 15 o 000015"
+                  className="rounded-lg border border-[#D4AF37]/40 bg-[#0a0e1a] px-3 py-2 text-sm text-[#F5F1E8] placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-[#D4AF37]"
                 />
               </div>
-              <div className="mt-3 flex flex-1 flex-col md:mt-0">
-                <span className="mb-1 text-xs font-semibold text-[#D4AF37]">HASTA</span>
+
+              {/* Cliente */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold uppercase tracking-wide text-[#D4AF37]">
+                  Cliente
+                </label>
                 <input
-                  type="date"
-                  className="rounded-lg border border-[#D4AF37]/40 bg-[#081225] px-3 py-2 text-[#F5F1E8]"
-                  value={filters.hasta}
-                  onChange={(e) => handleChange("hasta", e.target.value)}
+                  value={cliente}
+                  onChange={(e) => setCliente(e.target.value)}
+                  placeholder="Nombre del cliente"
+                  className="rounded-lg border border-[#D4AF37]/40 bg-[#0a0e1a] px-3 py-2 text-sm text-[#F5F1E8] placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-[#D4AF37]"
                 />
+              </div>
+
+              {/* Tarjeta */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold uppercase tracking-wide text-[#D4AF37]">
+                  Nº Tarjeta
+                </label>
+                <input
+                  value={tarjeta}
+                  onChange={(e) => setTarjeta(e.target.value)}
+                  placeholder="Últimos dígitos"
+                  className="rounded-lg border border-[#D4AF37]/40 bg-[#0a0e1a] px-3 py-2 text-sm text-[#F5F1E8] placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                />
+              </div>
+
+              {/* Servicio */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold uppercase tracking-wide text-[#D4AF37]">
+                  Servicio
+                </label>
+                <input
+                  value={servicio}
+                  onChange={(e) => setServicio(e.target.value)}
+                  placeholder="Mall, Spa, Cafetería..."
+                  className="rounded-lg border border-[#D4AF37]/40 bg-[#0a0e1a] px-3 py-2 text-sm text-[#F5F1E8] placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                />
+              </div>
+
+              {/* Estado */}
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold uppercase tracking-wide text-[#D4AF37]">
+                  Estado
+                </label>
+                <select
+                  value={estado}
+                  onChange={(e) => setEstado(e.target.value as any)}
+                  className="rounded-lg border border-[#D4AF37]/40 bg-[#0a0e1a] px-3 py-2 text-sm text-[#F5F1E8] outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                >
+                  <option value="todos">Todos</option>
+                  <option value="COMPLETADA">Completada</option>
+                  <option value="RECHAZADA">Rechazada</option>
+                  <option value="PENDIENTE">Pendiente</option>
+                </select>
               </div>
             </div>
 
-            <div className="flex flex-col gap-2 md:w-64">
-              <button
-                onClick={clearFilters}
-                className="w-full rounded-lg border border-[#D4AF37]/60 bg-transparent px-4 py-2 text-sm font-semibold text-[#D4AF37] hover:bg-[#D4AF37]/10 transition"
-              >
-                Limpiar filtros
-              </button>
-              <button
-                onClick={fetchTransactions}
-                className="w-full rounded-lg bg-[#D4AF37] px-4 py-2 text-sm font-semibold text-[#0F1B2E] hover:bg-[#c99a2e] transition"
-              >
-                Actualizar datos
-              </button>
+            {/* Rango de fechas + botones */}
+            <div className="mt-2 grid gap-4 md:grid-cols-3">
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold uppercase tracking-wide text-[#D4AF37]">
+                  Desde
+                </label>
+                <input
+                  type="date"
+                  value={desde}
+                  onChange={(e) => setDesde(e.target.value)}
+                  className="rounded-lg border border-[#D4AF37]/40 bg-[#0a0e1a] px-3 py-2 text-sm text-[#F5F1E8] outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-semibold uppercase tracking-wide text-[#D4AF37]">
+                  Hasta
+                </label>
+                <input
+                  type="date"
+                  value={hasta}
+                  onChange={(e) => setHasta(e.target.value)}
+                  className="rounded-lg border border-[#D4AF37]/40 bg-[#0a0e1a] px-3 py-2 text-sm text-[#F5F1E8] outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                />
+              </div>
+              <div className="flex items-end gap-3">
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="flex-1 rounded-lg border border-[#D4AF37]/40 px-4 py-2 text-sm text-[#F5F1E8] transition hover:bg-[#1a2a45]"
+                >
+                  Limpiar filtros
+                </button>
+                <button
+                  type="button"
+                  onClick={fetchTransactions}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#D4AF37] px-4 py-2 text-sm font-semibold text-[#0F1B2E] transition hover:bg-[#c99a2e]"
+                >
+                  <RefreshCw size={16} />
+                  Actualizar datos
+                </button>
+              </div>
             </div>
           </div>
-        </section>
 
-        {/* Tabla */}
-        <section className="mt-2 rounded-xl border border-[#D4AF37]/40 bg-[#0F1B2E]/80 pb-4">
-          <div className="border-b border-[#D4AF37]/30 px-4 py-3 text-lg font-semibold text-[#D4AF37]">
-            Transacciones
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead className="bg-[#081225] text-xs uppercase tracking-wide text-[#D4AF37]">
-                <tr>
-                  <th className="px-4 py-2 text-left">ID</th>
-                  <th className="px-4 py-2 text-left">Fecha</th>
-                  <th className="px-4 py-2 text-left">Cliente</th>
-                  <th className="px-4 py-2 text-left">Servicio</th>
-                  <th className="px-4 py-2 text-left">Tarjeta</th>
-                  <th className="px-4 py-2 text-right">Monto</th>
-                  <th className="px-4 py-2 text-left">Estado</th>
-                  <th className="px-4 py-2 text-left">Descripción</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? (
+          {/* Tabla */}
+          <div className="overflow-hidden rounded-lg border border-[#D4AF37]/30 bg-[#0F1B2E]/70 backdrop-blur">
+            <div className="flex items-center justify-between border-b border-[#D4AF37]/20 px-6 py-4">
+              <h2 className="text-2xl font-bold text-[#D4AF37]">Transacciones</h2>
+              <span className="text-xs text-[#F5F1E8]/70">
+                Mostrando {filteredTransactions.length} de {transactions.length}
+              </span>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-[#1a2a45]">
                   <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-[#F5F1E8]/70">
-                      Cargando...
-                    </td>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-[#D4AF37]">
+                      ID
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-[#D4AF37]">
+                      Fecha
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-[#D4AF37]">
+                      Cliente
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-[#D4AF37]">
+                      Servicio
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-[#D4AF37]">
+                      Tarjeta
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-[#D4AF37]">
+                      Monto
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-[#D4AF37]">
+                      Estado
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-semibold text-[#D4AF37]">
+                      Descripción
+                    </th>
                   </tr>
-                ) : transactions.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="px-4 py-8 text-center text-[#F5F1E8]/70">
-                      No hay transacciones con los filtros seleccionados
-                    </td>
-                  </tr>
-                ) : (
-                  transactions.map((t) => (
-                    <tr
-                      key={t.id}
-                      className="border-t border-[#D4AF37]/10 hover:bg-[#11213a] transition"
-                    >
-                      <td className="px-4 py-2 font-mono text-xs text-[#F5F1E8]">
-                        {String(t.id).padStart(6, "0")}
+                </thead>
+                <tbody>
+                  {loading ? (
+                    <tr>
+                      <td
+                        colSpan={8}
+                        className="px-6 py-8 text-center text-[#F5F1E8]/70"
+                      >
+                        Cargando...
                       </td>
-                      <td className="px-4 py-2 text-[#F5F1E8]/80">
-                        {new Date(t.creada_utc).toLocaleString("es-MX")}
-                      </td>
-                      <td className="px-4 py-2 text-[#F5F1E8]">{t.cliente}</td>
-                      <td className="px-4 py-2 text-[#F5F1E8]">{t.servicio}</td>
-                      <td className="px-4 py-2 text-[#F5F1E8]/80">{t.numero_tarjeta}</td>
-                      <td className="px-4 py-2 text-right text-[#D4AF37] font-semibold">
-                        ${Number(t.monto).toFixed(2)}
-                      </td>
-                      <td className="px-4 py-2">
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                            t.estado === "COMPLETADA" || t.estado === "APROBADA"
-                              ? "bg-green-500/15 text-green-300"
-                              : t.estado === "RECHAZADA"
-                              ? "bg-red-500/15 text-red-300"
-                              : "bg-yellow-500/15 text-yellow-300"
-                          }`}
-                        >
-                          {t.estado}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2 text-[#F5F1E8]/80">{t.descripcion}</td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : filteredTransactions.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={8}
+                        className="px-6 py-8 text-center text-[#F5F1E8]/70"
+                      >
+                        No hay transacciones con los filtros seleccionados
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredTransactions.map((tx) => (
+                      <tr
+                        key={tx.id_transaccion}
+                        className="border-b border-[#D4AF37]/10 transition hover:bg-[#1a2a45]/50"
+                      >
+                        <td className="px-6 py-3 font-mono text-xs text-[#F5F1E8]">
+                          {String(tx.id_transaccion).padStart(6, "0")}
+                        </td>
+                        <td className="px-6 py-3 text-xs text-[#F5F1E8]/80">
+                          {new Date(tx.creada_utc).toLocaleString("es-MX")}
+                        </td>
+                        <td className="px-6 py-3 text-[#F5F1E8]">
+                          {tx.nombre_cliente ?? "—"}
+                        </td>
+                        <td className="px-6 py-3 capitalize text-[#F5F1E8]">
+                          {tx.servicio ?? "—"}
+                        </td>
+                        <td className="px-6 py-3 text-xs text-[#F5F1E8]/80">
+                          {tx.numero_tarjeta
+                            ? "**** **** **** " +
+                              tx.numero_tarjeta.slice(-4)
+                            : "—"}
+                        </td>
+                        <td className="px-6 py-3 font-bold text-[#D4AF37]">
+                          ${Number(tx.monto || 0).toFixed(2)}
+                        </td>
+                        <td className="px-6 py-3">
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                              tx.nombre_estado === "COMPLETADA"
+                                ? "bg-green-500/20 text-green-300"
+                                : tx.nombre_estado === "RECHAZADA"
+                                ? "bg-red-500/20 text-red-300"
+                                : "bg-yellow-500/20 text-yellow-300"
+                            }`}
+                          >
+                            {tx.nombre_estado}
+                          </span>
+                        </td>
+                        <td className="px-6 py-3 text-xs text-[#F5F1E8]/80">
+                          {tx.descripcion ?? "—"}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </section>
+        </div>
       </div>
 
-      {/* INDICADORES FIJOS ABAJO, CENTRADOS */}
-      <div className="pointer-events-none fixed inset-x-0 bottom-4 flex justify-center px-4">
-        <div className="pointer-events-auto grid w-full max-w-5xl grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="rounded-xl bg-blue-600 px-4 py-3 text-white shadow-lg">
-            <p className="text-xs opacity-80">Total Transacciones</p>
-            <p className="text-2xl font-bold">{total}</p>
+      {/* Indicadores fijados abajo y centrados */}
+      <div className="pointer-events-none fixed bottom-4 left-1/2 z-30 w-full max-w-7xl -translate-x-1/2 px-4">
+        <div className="pointer-events-auto grid gap-4 md:grid-cols-4">
+          <div className="rounded-lg bg-blue-600 px-4 py-3 text-white shadow-lg">
+            <p className="text-sm font-semibold">Total Transacciones</p>
+            <p className="mt-1 text-3xl font-bold leading-none">
+              {computedStats.total}
+            </p>
           </div>
 
-          <div className="rounded-xl bg-green-600 px-4 py-3 text-white shadow-lg">
-            <p className="text-xs opacity-80">Exitosas</p>
-            <p className="text-2xl font-bold">{exitosas}</p>
+          <div className="rounded-lg bg-green-600 px-4 py-3 text-white shadow-lg">
+            <p className="text-sm font-semibold">Exitosas</p>
+            <p className="mt-1 text-3xl font-bold leading-none">
+              {computedStats.aprobadas}
+            </p>
           </div>
 
-          <div className="rounded-xl bg-red-600 px-4 py-3 text-white shadow-lg">
-            <p className="text-xs opacity-80">Rechazadas</p>
-            <p className="text-2xl font-bold">{rechazadas}</p>
+          <div className="rounded-lg bg-red-600 px-4 py-3 text-white shadow-lg">
+            <p className="text-sm font-semibold">Rechazadas</p>
+            <p className="mt-1 text-3xl font-bold leading-none">
+              {computedStats.rechazadas}
+            </p>
           </div>
 
-          <div className="rounded-xl bg-[#D4AF37] px-4 py-3 text-[#0F1B2E] shadow-lg">
-            <p className="text-xs opacity-80">Monto Total Aprobado</p>
-            <p className="text-2xl font-bold">
-              ${montoTotal.toFixed(2)}
+          <div className="rounded-lg bg-gradient-to-br from-[#D4AF37] to-yellow-600 px-4 py-3 text-[#0F1B2E] shadow-lg">
+            <p className="text-sm font-semibold">Monto Total Aprobado</p>
+            <p className="mt-1 text-3xl font-extrabold leading-none">
+              ${computedStats.monto_total.toFixed(2)}
             </p>
           </div>
         </div>
       </div>
     </div>
-  )
+  );
 }
