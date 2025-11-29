@@ -3,13 +3,7 @@
 import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 import { LogOut, RefreshCw, Search } from "lucide-react";
-
-import {
-  DateRange,
-  type Range,
-  type RangeKeyDict,
-} from "react-date-range";
-import { es as esLocale } from "date-fns/locale";
+import { DateRangeFilter } from "@/components/DateRangeFilter";
 
 type TransactionStatus = "COMPLETADA" | "RECHAZADA" | "PENDIENTE";
 
@@ -44,18 +38,6 @@ export default function AdminDashboardPage() {
   const [idTransaccion, setIdTransaccion] = useState("");
   const [desde, setDesde] = useState(""); // YYYY-MM-DD
   const [hasta, setHasta] = useState(""); // YYYY-MM-DD
-
-  // Modal de rango de fechas
-  const [showDatePicker, setShowDatePicker] = useState(false);
-
-  // Rango que usa el componente <DateRange />
-  const [dateRange, setDateRange] = useState<Range[]>([
-    {
-      startDate: new Date(),
-      endDate: new Date(),
-      key: "selection",
-    },
-  ]);
 
   const fetchTransactions = async () => {
     try {
@@ -96,6 +78,32 @@ export default function AdminDashboardPage() {
     setIdTransaccion("");
     setDesde("");
     setHasta("");
+  };
+
+  // cuando cambia el rango desde el DateRangeFilter
+  const handleDateRangeChange = (range: {
+    from: Date | null;
+    to: Date | null;
+  }) => {
+    if (range.from) {
+      const d = range.from;
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      setDesde(`${yyyy}-${mm}-${dd}`);
+    } else {
+      setDesde("");
+    }
+
+    if (range.to) {
+      const d = range.to;
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      setHasta(`${yyyy}-${mm}-${dd}`);
+    } else {
+      setHasta("");
+    }
   };
 
   // ======== FILTRO EN MEMORIA =========
@@ -160,66 +168,6 @@ export default function AdminDashboardPage() {
 
     return { total, aprobadas, rechazadas, monto_total };
   }, [transactions, stats]);
-
-  // Helpers para mostrar el rango como dd/mm/aaaa
-  const formatDateLabel = (value: string) => {
-    if (!value) return "";
-    const [y, m, d] = value.split("-");
-    return `${d}/${m}/${y}`;
-  };
-
-  const rangeLabel =
-    desde || hasta
-      ? `${desde ? formatDateLabel(desde) : "inicio"}  —  ${
-          hasta ? formatDateLabel(hasta) : "fin"
-        }`
-      : "Selecciona un rango de fechas";
-
-  // Sincronizar dateRange con los filtros actuales cuando abres el calendario
-  const openDatePicker = () => {
-    let start = new Date();
-    let end = new Date();
-
-    if (desde) start = new Date(desde + "T00:00:00");
-    if (hasta) end = new Date(hasta + "T00:00:00");
-
-    setDateRange([
-      {
-        startDate: start,
-        endDate: end,
-        key: "selection",
-      },
-    ]);
-
-    setShowDatePicker(true);
-  };
-
-  // Guardar fechas seleccionadas en los filtros (YYYY-MM-DD)
-  const applySelectedRange = () => {
-    const selection = dateRange[0];
-
-    if (selection.startDate) {
-      const d = selection.startDate;
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, "0");
-      const dd = String(d.getDate()).padStart(2, "0");
-      setDesde(`${yyyy}-${mm}-${dd}`);
-    } else {
-      setDesde("");
-    }
-
-    if (selection.endDate) {
-      const d = selection.endDate;
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, "0");
-      const dd = String(d.getDate()).padStart(2, "0");
-      setHasta(`${yyyy}-${mm}-${dd}`);
-    } else {
-      setHasta("");
-    }
-
-    setShowDatePicker(false);
-  };
 
   return (
     <div className="flex min-h-screen flex-col bg-[#0F1B2E] text-[#F5F1E8]">
@@ -330,22 +278,15 @@ export default function AdminDashboardPage() {
 
             {/* RANGO + BOTONES */}
             <div className="mt-2 grid gap-4 md:grid-cols-[2fr_1fr]">
-              {/* Campo único de rango de fechas */}
+              {/* NUEVO componente de rango de fechas */}
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold uppercase tracking-wide text-[#D4AF37]">
                   Rango de fechas
                 </label>
-
-                <button
-                  type="button"
-                  onClick={openDatePicker}
-                  className="flex w-full items-center justify-between rounded-lg border border-[#D4AF37]/40 bg-[#0a0e1a] px-3 py-2 text-sm text-[#F5F1E8] outline-none transition hover:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]"
-                >
-                  <span className={desde || hasta ? "" : "text-slate-500"}>
-                    {rangeLabel}
-                  </span>
-                  <span className="ml-2 text-xs text-[#D4AF37]">📅</span>
-                </button>
+                <DateRangeFilter
+                  key={`${desde}-${hasta}`} // para reset visual cuando limpias filtros
+                  onChange={handleDateRangeChange}
+                />
               </div>
 
               {/* Botones generales */}
@@ -481,102 +422,38 @@ export default function AdminDashboardPage() {
         </div>
       </main>
 
-      {/* MODAL DE RANGO DE FECHAS */}
-      {showDatePicker && (
-        <div
-          className="fixed inset-0 z-[80] flex items-center justify-center bg-black/50"
-          onClick={() => setShowDatePicker(false)}
-        >
-          <div
-            className="w-full max-w-3xl rounded-xl border border-[#D4AF37]/40 bg-[#0F1B2E] p-6 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <h3 className="mb-4 text-lg font-semibold text-[#F5F1E8]">
-              Selecciona rango de fechas
-            </h3>
-
-            <DateRange
-              ranges={dateRange}
-              onChange={(ranges: RangeKeyDict) => {
-                const sel = ranges.selection as Range;
-                setDateRange([sel]);
-              }}
-              months={2}
-              direction="horizontal"
-              moveRangeOnFirstSelection={false}
-              locale={esLocale}
-              editableDateInputs={false}
-              showMonthAndYearPickers={true}
-              showSelectionPreview={true}
-            />
-
-            <div className="mt-4 flex justify-between gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setDesde("");
-                  setHasta("");
-                  setShowDatePicker(false);
-                }}
-                className="rounded-lg border border-[#D4AF37]/40 px-4 py-2 text-xs text-[#F5F1E8] hover:bg-[#1a2a45]"
-              >
-                Limpiar rango
-              </button>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowDatePicker(false)}
-                  className="rounded-lg border border-[#D4AF37]/40 px-4 py-2 text-xs text-[#F5F1E8] hover:bg-[#1a2a45]"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={applySelectedRange}
-                  className="rounded-lg bg-[#D4AF37] px-4 py-2 text-xs font-semibold text-[#0F1B2E] hover:bg-[#c99a2e]"
-                >
-                  Guardar rango
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* INDICADORES FIJOS ABAJO */}
-      {!showDatePicker && (
-        <div className="pointer-events-none fixed bottom-4 left-1/2 z-30 w-full max-w-6xl -translate-x-1/2 px-4">
-          <div className="pointer-events-auto grid gap-4 md:grid-cols-4">
-            <div className="rounded-lg bg-blue-600 px-4 py-3 text-white shadow-lg">
-              <p className="text-sm font-semibold">Total Transacciones</p>
-              <p className="mt-1 text-3xl font-bold leading-none">
-                {computedStats.total}
-              </p>
-            </div>
+      <div className="pointer-events-none fixed bottom-4 left-1/2 z-30 w-full max-w-6xl -translate-x-1/2 px-4">
+        <div className="pointer-events-auto grid gap-4 md:grid-cols-4">
+          <div className="rounded-lg bg-blue-600 px-4 py-3 text-white shadow-lg">
+            <p className="text-sm font-semibold">Total Transacciones</p>
+            <p className="mt-1 text-3xl font-bold leading-none">
+              {computedStats.total}
+            </p>
+          </div>
 
-            <div className="rounded-lg bg-green-600 px-4 py-3 text-white shadow-lg">
-              <p className="text-sm font-semibold">Exitosas</p>
-              <p className="mt-1 text-3xl font-bold leading-none">
-                {computedStats.aprobadas}
-              </p>
-            </div>
+          <div className="rounded-lg bg-green-600 px-4 py-3 text-white shadow-lg">
+            <p className="text-sm font-semibold">Exitosas</p>
+            <p className="mt-1 text-3xl font-bold leading-none">
+              {computedStats.aprobadas}
+            </p>
+          </div>
 
-            <div className="rounded-lg bg-red-600 px-4 py-3 text-white shadow-lg">
-              <p className="text-sm font-semibold">Rechazadas</p>
-              <p className="mt-1 text-3xl font-bold leading-none">
-                {computedStats.rechazadas}
-              </p>
-            </div>
+          <div className="rounded-lg bg-red-600 px-4 py-3 text-white shadow-lg">
+            <p className="text-sm font-semibold">Rechazadas</p>
+            <p className="mt-1 text-3xl font-bold leading-none">
+              {computedStats.rechazadas}
+            </p>
+          </div>
 
-            <div className="rounded-lg bg-gradient-to-br from-[#D4AF37] to-yellow-600 px-4 py-3 text-[#0F1B2E] shadow-lg">
-              <p className="text-sm font-semibold">Monto Total Aprobado</p>
-              <p className="mt-1 text-3xl font-extrabold leading-none">
-                ${computedStats.monto_total.toFixed(2)}
-              </p>
-            </div>
+          <div className="rounded-lg bg-gradient-to-br from-[#D4AF37] to-yellow-600 px-4 py-3 text-[#0F1B2E] shadow-lg">
+            <p className="text-sm font-semibold">Monto Total Aprobado</p>
+            <p className="mt-1 text-3xl font-extrabold leading-none">
+              ${computedStats.monto_total.toFixed(2)}
+            </p>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
