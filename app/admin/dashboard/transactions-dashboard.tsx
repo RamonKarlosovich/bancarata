@@ -34,8 +34,11 @@ export default function AdminTransactionsDashboard() {
   const [servicio, setServicio] = useState(""); // Mall / Spa / etc
   const [estado, setEstado] = useState<"todos" | TransactionStatus>("todos");
   const [idTransaccion, setIdTransaccion] = useState(""); // ID de transacción
-  const [desde, setDesde] = useState(""); // fecha desde
-  const [hasta, setHasta] = useState(""); // fecha hasta
+  const [desde, setDesde] = useState(""); // fecha desde (YYYY-MM-DD)
+  const [hasta, setHasta] = useState(""); // fecha hasta (YYYY-MM-DD)
+
+  // NUEVO: controla si se ve el panel de rango de fechas
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const fetchTransactions = async () => {
     try {
@@ -145,8 +148,22 @@ export default function AdminTransactionsDashboard() {
     return { total, aprobadas, rechazadas, monto_total };
   }, [transactions, stats]);
 
+  // Helper para mostrar el rango en formato dd/mm/aaaa
+  const formatDateLabel = (value: string) => {
+    if (!value) return "";
+    const [y, m, d] = value.split("-");
+    return `${d}/${m}/${y}`;
+  };
+
+  const rangeLabel =
+    desde || hasta
+      ? `${desde ? formatDateLabel(desde) : "inicio"}  —  ${
+          hasta ? formatDateLabel(hasta) : "fin"
+        }`
+      : "Selecciona un rango de fechas";
+
   return (
-    <div className="relative flex min-h-[calc(100vh-64px)] flex-col bg-[#0F1B2E] text-[#F5F1E8]">
+    <div className="relative flex min-h[calc(100vh-64px)] flex-col bg-[#0F1B2E] text-[#F5F1E8]">
       {/* Contenido con scroll; dejamos espacio abajo para los indicadores */}
       <div className="flex-1 overflow-auto pb-40">
         <div className="mx-auto max-w-7xl space-y-8 px-6 py-8">
@@ -230,30 +247,79 @@ export default function AdminTransactionsDashboard() {
               </div>
             </div>
 
-            {/* Rango de fechas + botones */}
-            <div className="mt-2 grid gap-4 md:grid-cols-3">
-              <div className="flex flex-col gap-1">
+            {/* Rango de fechas + botones (NUEVO DISEÑO) */}
+            <div className="mt-2 grid gap-4 md:grid-cols-[2fr_1fr]">
+              {/* Control único de rango de fechas */}
+              <div className="relative flex flex-col gap-1">
                 <label className="text-xs font-semibold uppercase tracking-wide text-[#D4AF37]">
-                  Desde
+                  Rango de fechas
                 </label>
-                <input
-                  type="date"
-                  value={desde}
-                  onChange={(e) => setDesde(e.target.value)}
-                  className="rounded-lg border border-[#D4AF37]/40 bg-[#0a0e1a] px-3 py-2 text-sm text-[#F5F1E8] outline-none focus:ring-2 focus:ring-[#D4AF37]"
-                />
+
+                <button
+                  type="button"
+                  onClick={() => setShowDatePicker((prev) => !prev)}
+                  className="flex w-full items-center justify-between rounded-lg border border-[#D4AF37]/40 bg-[#0a0e1a] px-3 py-2 text-sm text-[#F5F1E8] outline-none transition hover:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]"
+                >
+                  <span className={desde || hasta ? "" : "text-slate-500"}>
+                    {rangeLabel}
+                  </span>
+                  <span className="ml-2 text-xs text-[#D4AF37]">
+                    📅
+                  </span>
+                </button>
+
+                {showDatePicker && (
+                  <div className="absolute top-full z-20 mt-2 w-full rounded-lg border border-[#D4AF37]/40 bg-[#0a0e1a] p-4 shadow-xl">
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-[#D4AF37]">
+                          Desde
+                        </span>
+                        <input
+                          type="date"
+                          value={desde}
+                          onChange={(e) => setDesde(e.target.value)}
+                          autoFocus
+                          className="rounded-lg border border-[#D4AF37]/40 bg-[#0F1B2E] px-3 py-2 text-sm text-[#F5F1E8] outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs font-semibold uppercase tracking-wide text-[#D4AF37]">
+                          Hasta
+                        </span>
+                        <input
+                          type="date"
+                          value={hasta}
+                          onChange={(e) => setHasta(e.target.value)}
+                          className="rounded-lg border border-[#D4AF37]/40 bg-[#0F1B2E] px-3 py-2 text-sm text-[#F5F1E8] outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-4 flex justify-between gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDesde("");
+                          setHasta("");
+                        }}
+                        className="rounded-lg border border-[#D4AF37]/40 px-3 py-1 text-xs text-[#F5F1E8] hover:bg-[#1a2a45]"
+                      >
+                        Limpiar fechas
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowDatePicker(false)}
+                        className="rounded-lg bg-[#D4AF37] px-4 py-1 text-xs font-semibold text-[#0F1B2E] hover:bg-[#c99a2e]"
+                      >
+                        Aplicar
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold uppercase tracking-wide text-[#D4AF37]">
-                  Hasta
-                </label>
-                <input
-                  type="date"
-                  value={hasta}
-                  onChange={(e) => setHasta(e.target.value)}
-                  className="rounded-lg border border-[#D4AF37]/40 bg-[#0a0e1a] px-3 py-2 text-sm text-[#F5F1E8] outline-none focus:ring-2 focus:ring-[#D4AF37]"
-                />
-              </div>
+
+              {/* Botones generales */}
               <div className="flex items-end gap-3">
                 <button
                   type="button"
