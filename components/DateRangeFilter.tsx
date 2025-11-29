@@ -15,7 +15,7 @@ interface DateRangeFilterProps {
 const today = new Date();
 const CURRENT_YEAR = today.getFullYear();
 
-// Años disponibles (ajusta cantidad si quieres más historial)
+// Años disponibles (ajusta si necesitas más historial)
 const YEARS = Array.from({ length: 25 }, (_, i) => CURRENT_YEAR - i);
 
 const MONTHS = [
@@ -84,7 +84,7 @@ export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
       toParts.year === CURRENT_YEAR &&
       toParts.month === today.getMonth() + 1
     ) {
-      return today.getDate();
+      return Math.min(maxDays, today.getDate());
     }
     return maxDays;
   }, [toParts.month, toParts.year]);
@@ -96,8 +96,9 @@ export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
   }
 
   function handleFromChange(field: keyof DateParts, value: number | ""): void {
-    const updated = { ...fromParts, [field]: value };
+    const updated: DateParts = { ...fromParts, [field]: value };
 
+    // Ajustar día si se pasa de los días del mes
     const maxDays = getDaysInMonth(
       updated.month as number,
       updated.year as number
@@ -108,24 +109,14 @@ export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
 
     setFromParts(updated);
 
-    let newFromDate = buildDate(updated);
-    let newToDate = toDate;
-
-    // Si HASTA < DESDE, mover HASTA a DESDE
-    if (newFromDate && newToDate && newToDate < newFromDate) {
-      newToDate = newFromDate;
-      setToParts({
-        day: newToDate.getDate(),
-        month: newToDate.getMonth() + 1,
-        year: newToDate.getFullYear(),
-      });
-    }
+    const newFromDate = buildDate(updated);
+    const newToDate = toDate; // no tocamos HASTA, solo notificamos
 
     notifyChange(newFromDate, newToDate);
   }
 
   function handleToChange(field: keyof DateParts, value: number | ""): void {
-    const updated = { ...toParts, [field]: value };
+    const updated: DateParts = { ...toParts, [field]: value };
 
     // No permitir años futuros
     if (field === "year" && typeof value === "number" && value > CURRENT_YEAR) {
@@ -140,7 +131,7 @@ export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
       updated.day = maxDays;
     }
 
-    // En mes/año actuales limitar al día de hoy
+    // En año/mes actuales, día máximo = hoy
     if (
       updated.year === CURRENT_YEAR &&
       updated.month === today.getMonth() + 1 &&
@@ -152,30 +143,20 @@ export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
 
     setToParts(updated);
 
-    let newToDate = buildDate(updated);
-    let newFromDate = fromDate;
+    const newToDate = buildDate(updated);
+    const newFromDate = fromDate; // no tocamos DESDE, solo notificamos
 
-    // Validación: HASTA no puede ser futuro
-    if (newToDate && newToDate > today) {
-      newToDate = today;
-      setToParts({
-        day: today.getDate(),
-        month: today.getMonth() + 1,
-        year: today.getFullYear(),
-      });
+    // Si HASTA > hoy, lo recortamos a hoy en el valor enviado (no tocamos selects)
+    let finalToDate = newToDate;
+    if (finalToDate && finalToDate > today) {
+      finalToDate = new Date(
+        today.getFullYear(),
+        today.getMonth(),
+        today.getDate()
+      );
     }
 
-    // Validación: HASTA no puede ser antes de DESDE
-    if (newFromDate && newToDate && newToDate < newFromDate) {
-      newFromDate = newToDate;
-      setFromParts({
-        day: newFromDate.getDate(),
-        month: newFromDate.getMonth() + 1,
-        year: newFromDate.getFullYear(),
-      });
-    }
-
-    notifyChange(newFromDate, newToDate);
+    notifyChange(newFromDate, finalToDate);
   }
 
   function handleClear() {
@@ -323,7 +304,6 @@ export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
           Limpiar rango
         </button>
 
-        {/* Estos botones son visuales; la lógica importante ya la maneja onChange */}
         <div className="flex gap-2">
           <button
             type="button"
