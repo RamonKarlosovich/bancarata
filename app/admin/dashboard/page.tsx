@@ -41,7 +41,7 @@ export default function AdminDashboardPage() {
   const [desde, setDesde] = useState(""); // YYYY-MM-DD
   const [hasta, setHasta] = useState(""); // YYYY-MM-DD
 
-  // NUEVO: panel emergente para rango de fechas
+  // Modal para rango de fechas
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const fetchTransactions = async () => {
@@ -90,20 +90,17 @@ export default function AdminDashboardPage() {
   // ======== FILTROS EN MEMORIA =========
   const filteredTransactions = useMemo(() => {
     return transactions.filter((tx) => {
-      // ID transacción
       if (idTransaccion.trim()) {
         const idStr = String(tx.id_transaccion);
         if (!idStr.includes(idTransaccion.trim())) return false;
       }
 
-      // Cliente
       if (cliente.trim()) {
         const q = cliente.trim().toLowerCase();
         const nombre = (tx.nombre_cliente ?? "").toLowerCase();
         if (!nombre.includes(q)) return false;
       }
 
-      // Tarjeta
       if (tarjeta.trim()) {
         const q = tarjeta.replace(/\s+/g, "").toLowerCase();
         const num = (tx.numero_tarjeta ?? "")
@@ -112,19 +109,16 @@ export default function AdminDashboardPage() {
         if (!num.includes(q)) return false;
       }
 
-      // Servicio
       if (servicio.trim()) {
         const q = servicio.trim().toLowerCase();
         const s = (tx.servicio ?? "").toLowerCase();
         if (!s.includes(q)) return false;
       }
 
-      // Estado
       if (estado !== "todos") {
         if ((tx.nombre_estado ?? "").toUpperCase() !== estado) return false;
       }
 
-      // Rango de fechas
       if (desde) {
         const dDesde = new Date(desde + "T00:00:00");
         const dTx = new Date(tx.creada_utc);
@@ -196,7 +190,7 @@ export default function AdminDashboardPage() {
         </div>
       </header>
 
-      {/* CONTENIDO CON SCROLL (dejamos espacio abajo para indicadores) */}
+      {/* CONTENIDO (dejamos padding abajo para los indicadores) */}
       <main className="flex-1 overflow-auto pb-40">
         <div className="mx-auto max-w-7xl space-y-8 px-6 py-6">
           {/* FILTROS */}
@@ -281,15 +275,15 @@ export default function AdminDashboardPage() {
 
             {/* RANGO + BOTONES */}
             <div className="mt-2 grid gap-4 md:grid-cols-[2fr_1fr]">
-              {/* Rango de fechas (UN SOLO CAMPO) */}
-              <div className="relative flex flex-col gap-1">
+              {/* Campo único de rango de fechas */}
+              <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold uppercase tracking-wide text-[#D4AF37]">
                   Rango de fechas
                 </label>
 
                 <button
                   type="button"
-                  onClick={() => setShowDatePicker((prev) => !prev)}
+                  onClick={() => setShowDatePicker(true)}
                   className="flex w-full items-center justify-between rounded-lg border border-[#D4AF37]/40 bg-[#0a0e1a] px-3 py-2 text-sm text-[#F5F1E8] outline-none transition hover:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]"
                 >
                   <span className={desde || hasta ? "" : "text-slate-500"}>
@@ -297,57 +291,6 @@ export default function AdminDashboardPage() {
                   </span>
                   <span className="ml-2 text-xs text-[#D4AF37]">📅</span>
                 </button>
-
-                {/* Panel emergente con dos calendarios (desde / hasta) */}
-                {showDatePicker && (
-                  <div className="absolute top-full z-20 mt-2 w-full rounded-lg border border-[#D4AF37]/40 bg-[#0a0e1a] p-4 shadow-xl">
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-xs font-semibold uppercase tracking-wide text-[#D4AF37]">
-                          Desde
-                        </span>
-                        <input
-                          type="date"
-                          value={desde}
-                          onChange={(e) => setDesde(e.target.value)}
-                          autoFocus
-                          className="rounded-lg border border-[#D4AF37]/40 bg-[#0F1B2E] px-3 py-2 text-sm text-[#F5F1E8] outline-none focus:ring-2 focus:ring-[#D4AF37]"
-                        />
-                      </div>
-                      <div className="flex flex-col gap-1">
-                        <span className="text-xs font-semibold uppercase tracking-wide text-[#D4AF37]">
-                          Hasta
-                        </span>
-                        <input
-                          type="date"
-                          value={hasta}
-                          onChange={(e) => setHasta(e.target.value)}
-                          className="rounded-lg border border-[#D4AF37]/40 bg-[#0F1B2E] px-3 py-2 text-sm text-[#F5F1E8] outline-none focus:ring-2 focus:ring-[#D4AF37]"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="mt-4 flex justify-between gap-3">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDesde("");
-                          setHasta("");
-                        }}
-                        className="rounded-lg border border-[#D4AF37]/40 px-3 py-1 text-xs text-[#F5F1E8] hover:bg-[#1a2a45]"
-                      >
-                        Limpiar fechas
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setShowDatePicker(false)}
-                        className="rounded-lg bg-[#D4AF37] px-4 py-1 text-xs font-semibold text-[#0F1B2E] hover:bg-[#c99a2e]"
-                      >
-                        Aplicar
-                      </button>
-                    </div>
-                  </div>
-                )}
               </div>
 
               {/* Botones generales */}
@@ -483,7 +426,79 @@ export default function AdminDashboardPage() {
         </div>
       </main>
 
-      {/* INDICADORES FIJOS ABAJO Y CENTRADOS */}
+      {/* MODAL DE RANGO DE FECHAS (SIEMPRE ENCIMA DE TODO) */}
+      {showDatePicker && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50"
+          onClick={() => setShowDatePicker(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-xl border border-[#D4AF37]/40 bg-[#0F1B2E] p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-4 text-lg font-semibold text-[#F5F1E8]">
+              Seleccionar rango de fechas
+            </h3>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-semibold uppercase tracking-wide text-[#D4AF37]">
+                  Desde
+                </span>
+                <input
+                  type="date"
+                  value={desde}
+                  onChange={(e) => setDesde(e.target.value)}
+                  autoFocus
+                  className="rounded-lg border border-[#D4AF37]/40 bg-[#0a0e1a] px-3 py-2 text-sm text-[#F5F1E8] outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                />
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-xs font-semibold uppercase tracking-wide text-[#D4AF37]">
+                  Hasta
+                </span>
+                <input
+                  type="date"
+                  value={hasta}
+                  onChange={(e) => setHasta(e.target.value)}
+                  className="rounded-lg border border-[#D4AF37]/40 bg-[#0a0e1a] px-3 py-2 text-sm text-[#F5F1E8] outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                />
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-between gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setDesde("");
+                  setHasta("");
+                }}
+                className="rounded-lg border border-[#D4AF37]/40 px-4 py-2 text-xs text-[#F5F1E8] hover:bg-[#1a2a45]"
+              >
+                Limpiar fechas
+              </button>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowDatePicker(false)}
+                  className="rounded-lg border border-[#D4AF37]/40 px-4 py-2 text-xs text-[#F5F1E8] hover:bg-[#1a2a45]"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowDatePicker(false)}
+                  className="rounded-lg bg-[#D4AF37] px-4 py-2 text-xs font-semibold text-[#0F1B2E] hover:bg-[#c99a2e]"
+                >
+                  Aplicar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* INDICADORES FIJOS ABAJO */}
       <div className="pointer-events-none fixed bottom-4 left-1/2 z-30 w-full max-w-6xl -translate-x-1/2 px-4">
         <div className="pointer-events-auto grid gap-4 md:grid-cols-4">
           <div className="rounded-lg bg-blue-600 px-4 py-3 text-white shadow-lg">
