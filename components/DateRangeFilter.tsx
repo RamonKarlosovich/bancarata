@@ -1,4 +1,3 @@
-// components/DateRangeFilter.tsx
 "use client";
 
 import { useMemo, useState } from "react";
@@ -10,14 +9,13 @@ type DateParts = {
 };
 
 interface DateRangeFilterProps {
-  // Te devuelve las fechas listas para usar en el fetch de transacciones
   onChange?: (range: { from: Date | null; to: Date | null }) => void;
 }
 
 const today = new Date();
 const CURRENT_YEAR = today.getFullYear();
 
-// Años disponibles (ajusta el rango según la antigüedad de tus datos)
+// Años disponibles (ajusta cantidad si quieres más historial)
 const YEARS = Array.from({ length: 25 }, (_, i) => CURRENT_YEAR - i);
 
 const MONTHS = [
@@ -76,13 +74,12 @@ export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
     [fromParts.month, fromParts.year]
   );
 
-  // Días válidos para HASTA (limitado por HOY)
+  // Días válidos para HASTA (limitado por HOY si corresponde)
   const toDays = useMemo(() => {
     const maxDays = getDaysInMonth(
       toParts.month as number,
       toParts.year as number
     );
-    // Si es el mes y año actuales, limitamos al día de hoy
     if (
       toParts.year === CURRENT_YEAR &&
       toParts.month === today.getMonth() + 1
@@ -98,12 +95,9 @@ export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
     }
   }
 
-  function handleFromChange(
-    field: keyof DateParts,
-    value: number | ""
-  ): void {
+  function handleFromChange(field: keyof DateParts, value: number | ""): void {
     const updated = { ...fromParts, [field]: value };
-    // Ajustar día si se pasa de los días del mes
+
     const maxDays = getDaysInMonth(
       updated.month as number,
       updated.year as number
@@ -111,12 +105,13 @@ export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
     if (updated.day && updated.day > maxDays) {
       updated.day = maxDays;
     }
+
     setFromParts(updated);
 
     let newFromDate = buildDate(updated);
     let newToDate = toDate;
 
-    // Si HASTA < DESDE, movemos HASTA al mismo día que DESDE
+    // Si HASTA < DESDE, mover HASTA a DESDE
     if (newFromDate && newToDate && newToDate < newFromDate) {
       newToDate = newFromDate;
       setToParts({
@@ -137,7 +132,6 @@ export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
       return;
     }
 
-    // Ajuste de días según mes/año
     const maxDays = getDaysInMonth(
       updated.month as number,
       updated.year as number
@@ -146,7 +140,7 @@ export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
       updated.day = maxDays;
     }
 
-    // En el año y mes actuales, limitar día máximo a hoy
+    // En mes/año actuales limitar al día de hoy
     if (
       updated.year === CURRENT_YEAR &&
       updated.month === today.getMonth() + 1 &&
@@ -197,7 +191,7 @@ export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
       </h3>
 
       <div className="grid grid-cols-2 gap-6">
-        {/* DESDE (lado derecho en tu diseño puedes invertir con CSS) */}
+        {/* DESDE */}
         <div className="flex flex-col gap-2">
           <span className="font-medium text-amber-300">DESDE</span>
           <div className="flex gap-2">
@@ -257,7 +251,7 @@ export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
           </div>
         </div>
 
-        {/* HASTA (lado izquierdo / independiente) */}
+        {/* HASTA */}
         <div className="flex flex-col gap-2">
           <span className="font-medium text-amber-300">
             HASTA (máx. hoy)
@@ -320,7 +314,6 @@ export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
         </div>
       </div>
 
-      {/* Botones inferiores, tipo los de tu modal actual */}
       <div className="mt-4 flex justify-between text-xs">
         <button
           type="button"
@@ -330,7 +323,7 @@ export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
           Limpiar rango
         </button>
 
-        {/* Si quieres que esto cierre el modal, aquí solo disparas onChange y dejas que el padre maneje el cierre */}
+        {/* Estos botones son visuales; la lógica importante ya la maneja onChange */}
         <div className="flex gap-2">
           <button
             type="button"
