@@ -3,9 +3,7 @@
 import Image from "next/image"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { Menu, X, Wallet, Mail, HelpCircle, Shield, BarChart3 } from "lucide-react"
-
-import AccountModal from "@/components/modals/account-modal"
+import { Menu, X, Mail, HelpCircle, Shield, BarChart3 } from "lucide-react"
 import NewsletterModal from "@/components/modals/newsletter-modal"
 import HelpModal from "@/components/modals/help-modal"
 import SecurityModal from "@/components/modals/security-modal"
@@ -30,7 +28,8 @@ export default function HomePage() {
 
   const handleAdminClick = () => {
     setIsMenuOpen(false)
-    router.push("/login") // aquí entra el usuario admin para ver el panel
+    // Ir directo al panel administrativo (interfaz de monitoreo)
+    router.push("/admin/dashboard")
   }
 
   return (
@@ -57,22 +56,8 @@ export default function HomePage() {
 
             {/* Dropdown Menu */}
             {isMenuOpen && (
-              <div className="absolute right-0 mt-2 w-64 bg-[#0F1B2E] border border-[#D4AF37]/30 rounded-lg shadow-lg overflow-hidden z-50">
+              <div className="absolute right-0 mt-2 w-56 bg-[#0F1B2E] border border-[#D4AF37]/30 rounded-lg shadow-lg overflow-hidden z-50">
                 <div className="p-4 space-y-2">
-                  {/* Abrir cuenta */}
-                  <button
-                    onClick={() => handleMenuClick("account")}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-[#D4AF37]/10 text-[#F5F1E8] transition"
-                  >
-                    <Wallet size={18} />
-                    <div className="text-left">
-                      <p className="font-semibold text-sm">Abrir una Cuenta</p>
-                      <p className="text-xs text-[#F5F1E8]/70">Solicita tu cuenta bancaria</p>
-                    </div>
-                  </button>
-
-                  <div className="border-t border-[#D4AF37]/20" />
-
                   {/* Boletín */}
                   <button
                     onClick={() => handleMenuClick("newsletter")}
@@ -85,9 +70,9 @@ export default function HomePage() {
                     </div>
                   </button>
 
-                  <div className="border-t border-[#D4AF37]/20" />
+                  <div className="border-t border-[#D4AF37]/20"></div>
 
-                  {/* Centro de ayuda */}
+                  {/* Centro de Ayuda */}
                   <button
                     onClick={() => handleMenuClick("help")}
                     className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-[#D4AF37]/10 text-[#F5F1E8] transition"
@@ -99,7 +84,7 @@ export default function HomePage() {
                     </div>
                   </button>
 
-                  <div className="border-t border-[#D4AF37]/20" />
+                  <div className="border-t border-[#D4AF37]/20"></div>
 
                   {/* Seguridad */}
                   <button
@@ -113,13 +98,12 @@ export default function HomePage() {
                     </div>
                   </button>
 
-                  {/* Separador admin */}
-                  <div className="border-t border-[#D4AF37]/20 pt-2 mt-2" />
+                  <div className="border-t border-[#D4AF37]/20"></div>
 
-                  {/* Opción solo administrativa */}
+                  {/* Panel Administrativo */}
                   <button
                     onClick={handleAdminClick}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-[#D4AF37]/10 hover:bg-[#D4AF37]/20 text-[#F5F1E8] transition"
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-[#D4AF37]/10 text-[#F5F1E8] transition"
                   >
                     <BarChart3 size={18} />
                     <div className="text-left">
@@ -190,7 +174,6 @@ export default function HomePage() {
       </footer>
 
       {/* Modals */}
-      {activeModal === "account" && <AccountModal onClose={() => setActiveModal(null)} />}
       {activeModal === "newsletter" && <NewsletterModal onClose={() => setActiveModal(null)} />}
       {activeModal === "help" && <HelpModal onClose={() => setActiveModal(null)} />}
       {activeModal === "security" && <SecurityModal onClose={() => setActiveModal(null)} />}
