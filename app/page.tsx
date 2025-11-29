@@ -3,8 +3,7 @@
 import Image from "next/image"
 import { useSearchParams, useRouter } from "next/navigation"
 import { useEffect, useState } from "react"
-import { Menu, X, Mail, HelpCircle, Shield, BarChart3 } from "lucide-react"
-import NewsletterModal from "@/components/modals/newsletter-modal"
+import { Menu, X, HelpCircle, Shield, BarChart3 } from "lucide-react"
 import HelpModal from "@/components/modals/help-modal"
 import SecurityModal from "@/components/modals/security-modal"
 
@@ -28,7 +27,6 @@ export default function HomePage() {
 
   const handleAdminClick = () => {
     setIsMenuOpen(false)
-    // Ir directo al panel administrativo (interfaz de monitoreo)
     router.push("/admin/dashboard")
   }
 
@@ -58,20 +56,6 @@ export default function HomePage() {
             {isMenuOpen && (
               <div className="absolute right-0 mt-2 w-56 bg-[#0F1B2E] border border-[#D4AF37]/30 rounded-lg shadow-lg overflow-hidden z-50">
                 <div className="p-4 space-y-2">
-                  {/* Boletín */}
-                  <button
-                    onClick={() => handleMenuClick("newsletter")}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-[#D4AF37]/10 text-[#F5F1E8] transition"
-                  >
-                    <Mail size={18} />
-                    <div className="text-left">
-                      <p className="font-semibold text-sm">Boletín</p>
-                      <p className="text-xs text-[#F5F1E8]/70">Noticias y promociones</p>
-                    </div>
-                  </button>
-
-                  <div className="border-t border-[#D4AF37]/20"></div>
-
                   {/* Centro de Ayuda */}
                   <button
                     onClick={() => handleMenuClick("help")}
@@ -174,7 +158,6 @@ export default function HomePage() {
       </footer>
 
       {/* Modals */}
-      {activeModal === "newsletter" && <NewsletterModal onClose={() => setActiveModal(null)} />}
       {activeModal === "help" && <HelpModal onClose={() => setActiveModal(null)} />}
       {activeModal === "security" && <SecurityModal onClose={() => setActiveModal(null)} />}
     </div>
