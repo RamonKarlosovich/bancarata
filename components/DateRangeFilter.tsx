@@ -8,13 +8,7 @@ interface DateRangeFilterProps {
   onChange?: (range: { from: Date | null; to: Date | null }) => void;
 }
 
-const today = new Date();
-const TODAY_NORMALIZED = new Date(
-  today.getFullYear(),
-  today.getMonth(),
-  today.getDate()
-);
-const CURRENT_YEAR = today.getFullYear();
+const CURRENT_YEAR = new Date().getFullYear();
 
 // Años disponibles
 const YEARS = Array.from({ length: 25 }, (_, i) =>
@@ -42,7 +36,7 @@ function buildDate(day: Part, month: Part, year: Part): Date | null {
   const m = Number(month);
   const d = Number(day);
   const dt = new Date(y, m - 1, d);
-  // Validar que la fecha exista (ej. 31/02 no es válido)
+  // Validar que la fecha exista
   if (
     dt.getFullYear() !== y ||
     dt.getMonth() !== m - 1 ||
@@ -64,36 +58,23 @@ export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
   const [toMonth, setToMonth] = useState<Part>("");
   const [toYear, setToYear] = useState<Part>("");
 
-  // Mensaje de advertencia de validaciones
+  // Mensaje de validación
   const [warning, setWarning] = useState<string>("");
 
   const handleSave = () => {
-    let from = buildDate(fromDay, fromMonth, fromYear);
-    let to = buildDate(toDay, toMonth, toYear);
-    let msg = "";
+    const from = buildDate(fromDay, fromMonth, fromYear);
+    const to = buildDate(toDay, toMonth, toYear);
 
-    // Validación 1: HASTA no puede ser futura
-    if (to && to > TODAY_NORMALIZED) {
-      to = new Date(
-        TODAY_NORMALIZED.getFullYear(),
-        TODAY_NORMALIZED.getMonth(),
-        TODAY_NORMALIZED.getDate()
-      );
-      msg = "La fecha HASTA fue ajustada a la fecha actual.";
-    }
-
-    // Validación 2: DESDE no puede ser mayor que HASTA
+    // Regla: si ambas fechas existen, DESDE no puede ser > HASTA
     if (from && to && from > to) {
-      to = new Date(from.getFullYear(), from.getMonth(), from.getDate());
-      msg = msg
-        ? msg + " Además, la fecha DESDE era mayor que HASTA, se ajustó HASTA al mismo día."
-        : "La fecha DESDE no puede ser mayor que HASTA. Se ajustó HASTA al mismo día.";
+      setWarning(
+        "La fecha DESDE no puede ser mayor que la fecha HASTA. Ajusta el rango."
+      );
+      // No aplicamos cambios
+      return;
     }
 
-    // Guardar mensaje (si lo hay)
-    setWarning(msg);
-
-    // Notificar al padre
+    setWarning("");
     onChange?.({ from: from ?? null, to: to ?? null });
   };
 
@@ -165,9 +146,7 @@ export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
 
         {/* HASTA */}
         <div className="flex flex-col gap-2">
-          <span className="font-medium text-amber-300">
-            HASTA (máx. hoy)
-          </span>
+          <span className="font-medium text-amber-300">HASTA</span>
           <div className="flex gap-2">
             <select
               className="flex-1 bg-slate-800 border border-slate-600 rounded-md px-2 py-1"
