@@ -170,14 +170,14 @@ export default function AccountModal({ onClose }: AccountModalProps) {
             <section>
               <h3 className="text-lg font-bold text-[#D4AF37] mb-2">2. Proceso de Validación</h3>
               <p className="text-sm">
-                BANCARATA se reserva el derecho de validar toda la información proporcionada. El proceso de aprobación puede tomar hasta 48 horas hábiles.
+                BANCARRATA se reserva el derecho de validar toda la información proporcionada. El proceso de aprobación puede tomar hasta 48 horas hábiles.
               </p>
             </section>
 
             <section>
               <h3 className="text-lg font-bold text-[#D4AF37] mb-2">3. Rechazo de Solicitud</h3>
               <p className="text-sm">
-                BANCARATA puede rechazar una solicitud si identifica información incompleta, fraudulenta o si no cumple con los requisitos regulatorios.
+                BANCARRATA puede rechazar una solicitud si identifica información incompleta, fraudulenta o si no cumple con los requisitos regulatorios.
               </p>
             </section>
 
@@ -194,7 +194,7 @@ export default function AccountModal({ onClose }: AccountModalProps) {
             <section>
               <h3 className="text-lg font-bold text-[#D4AF37] mb-2">5. Protección de Datos</h3>
               <p className="text-sm">
-                Tus datos personales serán tratados de conformidad con la Ley Federal de Protección de Datos Personales. BANCARATA se compromete a mantener confidencialidad.
+                Tus datos personales serán tratados de conformidad con la Ley Federal de Protección de Datos Personales. BANCARRATA se compromete a mantener confidencialidad.
               </p>
             </section>
           </div>

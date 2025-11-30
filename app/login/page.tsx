@@ -53,8 +53,8 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         <div className="bg-[#0F1B2E]/50 backdrop-blur border border-[#D4AF37]/30 rounded-lg p-8">
           <div className="text-center mb-8">
-            <Image src="/logo.png" alt="BANCARATA" width={80} height={80} className="mx-auto mb-4" />
-            <h1 className="text-3xl font-bold text-[#D4AF37]">BANCARATA</h1>
+            <Image src="/logo.png" alt="BANCARRATA" width={80} height={80} className="mx-auto mb-4" />
+            <h1 className="text-3xl font-bold text-[#D4AF37]">BANCARRATA</h1>
             <p className="text-[#F5F1E8]/70 mt-2">Ingresa a tu cuenta</p>
           </div>
 

@@ -1,4 +1,4 @@
-# BANCARATA - Plataforma de Pagos Distribuida
+# BANCARRATA - Plataforma de Pagos Distribuida
 
 Sistema web integrado que conecta con la API C# de transacciones bancarias para procesar pagos de múltiples servicios en el MALL.
 

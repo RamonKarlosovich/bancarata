@@ -100,21 +100,21 @@ export default function NewsletterModal({ onClose }: NewsletterModalProps) {
             <section>
               <h3 className="text-lg font-bold text-[#D4AF37] mb-2">1. Suscripción al Boletín</h3>
               <p className="text-sm">
-                Al suscribirse a nuestro boletín, usted acepta recibir comunicaciones periódicas sobre noticias, promociones y actualizaciones de BANCARATA.
+                Al suscribirse a nuestro boletín, usted acepta recibir comunicaciones periódicas sobre noticias, promociones y actualizaciones de BANCARRATA.
               </p>
             </section>
 
             <section>
               <h3 className="text-lg font-bold text-[#D4AF37] mb-2">2. Frecuencia de Envíos</h3>
               <p className="text-sm">
-                El boletín se enviará semanalmente o según lo determine BANCARATA. Usted puede cambiar la frecuencia en su perfil.
+                El boletín se enviará semanalmente o según lo determine BANCARRATA. Usted puede cambiar la frecuencia en su perfil.
               </p>
             </section>
 
             <section>
               <h3 className="text-lg font-bold text-[#D4AF37] mb-2">3. Privacidad</h3>
               <p className="text-sm">
-                Su correo electrónico será protegido y nunca será compartido con terceros. BANCARATA se compromete a respetar su privacidad.
+                Su correo electrónico será protegido y nunca será compartido con terceros. BANCARRATA se compromete a respetar su privacidad.
               </p>
             </section>
 

@@ -21,7 +21,7 @@ export default function SecurityModal({ onClose }: SecurityModalProps) {
         {/* Body */}
         <div className="p-6 max-h-[70vh] overflow-y-auto space-y-6">
           <p className="text-[#F5F1E8]/70">
-            En BANCARATA, la seguridad de tus datos y dinero es nuestra prioridad máxima. Te explicamos cómo protegemos tu información:
+            En BANCARRATA, la seguridad de tus datos y dinero es nuestra prioridad máxima. Te explicamos cómo protegemos tu información:
           </p>
 
           {/* Protección de Datos */}

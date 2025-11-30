@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { MongoClient } from 'mongodb'
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017'
-const DB_NAME = 'BANCARATA'
+const DB_NAME = 'BANCARRATA'
 const COLLECTION_NAME = 'SUSCRIPCIONES_BOLETIN'
 export async function POST(request: NextRequest) {
   try {

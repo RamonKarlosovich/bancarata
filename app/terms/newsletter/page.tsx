@@ -20,7 +20,7 @@ export default function NewsletterTermsPage() {
           <section>
             <h2 className="text-2xl font-bold text-[#D4AF37] mb-3">1. Suscripción a Newsletter</h2>
             <p>
-              Al suscribirse a nuestro newsletter, aceptas recibir comunicaciones por correo electrónico de parte de BANCARATA con información sobre productos, servicios, promociones y noticias financieras.
+              Al suscribirse a nuestro newsletter, aceptas recibir comunicaciones por correo electrónico de parte de BANCARRATA con información sobre productos, servicios, promociones y noticias financieras.
             </p>
           </section>
 
@@ -48,7 +48,7 @@ export default function NewsletterTermsPage() {
           <section>
             <h2 className="text-2xl font-bold text-[#D4AF37] mb-3">5. Protección de Datos</h2>
             <p>
-              Tu información será protegida conforme a la Ley Federal de Protección de Datos Personales en México. BANCARATA implementa medidas de seguridad estándar en la industria.
+              Tu información será protegida conforme a la Ley Federal de Protección de Datos Personales en México. BANCARRATA implementa medidas de seguridad estándar en la industria.
             </p>
           </section>
 
@@ -65,7 +65,7 @@ export default function NewsletterTermsPage() {
           <section>
             <h2 className="text-2xl font-bold text-[#D4AF37] mb-3">7. No Spam</h2>
             <p>
-              BANCARATA se compromete a no enviar spam. Si recibas correos no deseados, reporta el incidente inmediatamente a dalekmiaw@BancaRata.com.
+              BANCARRATA se compromete a no enviar spam. Si recibas correos no deseados, reporta el incidente inmediatamente a dalekmiaw@BancaRrata.com.
             </p>
           </section>
 

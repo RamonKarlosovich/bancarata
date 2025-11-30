@@ -36,11 +36,11 @@ export default function HomePage() {
       <nav className="backdrop-blur-md border-b border-[#D4AF37]/20 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto w-full px-6 py-4 flex justify-between items-center">
           <div className="flex-shrink-0 -ml-8 w-24 h-20 overflow-hidden rounded-full opacity-95">
-            <Image src="/logo.png" alt="BANCARATA" width={120} height={120} className="mix-blend-screen" />
+            <Image src="/logo.png" alt="BANCARRATA" width={120} height={120} className="mix-blend-screen" />
           </div>
 
           <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center gap-3">
-            <span className="text-[#D4AF37] font-bold text-2xl">BANCARATA</span>
+            <span className="text-[#D4AF37] font-bold text-2xl">BANCARRATA</span>
           </div>
 
           <div className="flex-shrink-0 relative">
@@ -92,7 +92,7 @@ export default function HomePage() {
                     <BarChart3 size={18} />
                     <div className="text-left">
                       <p className="font-semibold text-sm">Panel Administrativo</p>
-                      <p className="text-xs text-[#F5F1E8]/70">Acceso interno BANCARATA</p>
+                      <p className="text-xs text-[#F5F1E8]/70">Acceso interno BANCARRATA</p>
                     </div>
                   </button>
                 </div>
@@ -123,7 +123,7 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-3 gap-8 mb-8">
             <div className="text-center">
-              <h4 className="text-[#D4AF37] font-bold mb-2">BANCARATA</h4>
+              <h4 className="text-[#D4AF37] font-bold mb-2">BANCARRATA</h4>
               <p className="text-[#F5F1E8]/70 text-sm">Global Financial Trust</p>
               <p className="text-[#F5F1E8]/50 text-xs mt-1">Sistema de Pagos Integrado</p>
             </div>
@@ -131,7 +131,7 @@ export default function HomePage() {
             <div className="text-center">
               <h4 className="text-[#D4AF37] font-bold mb-2">Contacto</h4>
               <p className="text-[#F5F1E8]/70 text-sm">+52 662 530 7360</p>
-              <p className="text-[#F5F1E8]/70 text-sm">dalekmiaw@BancaRata.com</p>
+              <p className="text-[#F5F1E8]/70 text-sm">dalekmiaw@BancaRrata.com</p>
               <p className="text-[#F5F1E8]/50 text-xs mt-1">Soporte 24/7</p>
             </div>
 
@@ -139,13 +139,13 @@ export default function HomePage() {
               <h4 className="text-[#D4AF37] font-bold mb-2">Regulación Bancaria</h4>
               <p className="text-[#F5F1E8]/70 text-sm">Lic. #BR2025-0125</p>
               <p className="text-[#F5F1E8]/70 text-sm">RFC: BCRT250101ABC</p>
-              <p className="text-[#F5F1E8]/50 text-xs mt-1">SWIFT: BANCARATAMX</p>
+              <p className="text-[#F5F1E8]/50 text-xs mt-1">SWIFT: BANCARRATAMX</p>
             </div>
           </div>
 
           <div className="border-t border-[#D4AF37]/20 pt-6">
             <div className="text-center text-[#F5F1E8]/70 mb-4">
-              <p className="text-sm font-semibold mb-2">BANCARATA © 2025 - Global Financial Trust</p>
+              <p className="text-sm font-semibold mb-2">BANCARRATA © 2025 - Global Financial Trust</p>
               <p className="text-xs">Transacciones Seguras | Encriptación de Nivel Bancario | Cumplimiento PCI-DSS</p>
             </div>
 

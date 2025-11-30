@@ -186,7 +186,7 @@ export default function AdminDashboardPage() {
       <header className="sticky top-0 z-40 border-b border-[#D4AF37]/20 bg-[#0F1B2E]/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-3">
-            <Image src="/logo.png" alt="BANCARATA" width={40} height={40} />
+            <Image src="/logo.png" alt="BANCARRATA" width={40} height={40} />
             <div>
               <p className="font-bold text-[#D4AF37]">Panel Administrativo</p>
               <p className="text-xs text-slate-300">

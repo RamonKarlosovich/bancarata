@@ -39,7 +39,7 @@ export default function HelpModal({ onClose }: HelpModalProps) {
             <Mail className="text-[#D4AF37] flex-shrink-0 mt-1" size={20} />
             <div>
               <p className="font-semibold text-[#D4AF37] text-sm mb-1">Correo Electrónico</p>
-              <p className="text-[#F5F1E8]">dalekmiaw@BancaRata.com</p>
+              <p className="text-[#F5F1E8]">dalekmiaw@BancaRrata.com</p>
               <p className="text-[#F5F1E8]/50 text-xs mt-2">Respuesta en menos de 2 horas</p>
             </div>
           </div>

@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "title": "BANCARATA – API bancaria",
+    "title": "BANCARRATA – API bancaria",
     "version": "1.0.0",
     "description": "Servicio bancario para procesar transferencias internas entre tarjetas conectadas a cuentas bancarias."
   },
@@ -11,7 +11,7 @@
       "description": "Servidor local de desarrollo"
     },
     {
-      "url": "https://bancarata.vercel.app",
+      "url": "https://bancarrata.vercel.app",
       "description": "Servidor en producción"
     }
   ],
