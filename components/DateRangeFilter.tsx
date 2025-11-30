@@ -62,15 +62,28 @@ export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
   const [warning, setWarning] = useState<string>("");
 
   const handleSave = () => {
-    const from = buildDate(fromDay, fromMonth, fromYear);
-    const to = buildDate(toDay, toMonth, toYear);
+    let from = buildDate(fromDay, fromMonth, fromYear);
+    let to = buildDate(toDay, toMonth, toYear);
 
-    // Regla: si ambas fechas existen, DESDE no puede ser > HASTA
+    // Si ambas fechas existen y DESDE > HASTA, ajustamos HASTA a DESDE
     if (from && to && from > to) {
+      const yyyy = String(from.getFullYear());
+      const mm = String(from.getMonth() + 1).padStart(2, "0");
+      const dd = String(from.getDate()).padStart(2, "0");
+
+      // Actualizamos selects de HASTA
+      setToDay(dd);
+      setToMonth(mm);
+      setToYear(yyyy);
+
+      // Ajustamos la fecha to que enviaremos al padre
+      to = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+
       setWarning(
-        "La fecha DESDE no puede ser mayor que la fecha HASTA. Ajusta el rango."
+        "La fecha DESDE era mayor que HASTA. Se ajustó HASTA a la misma fecha."
       );
-      // No aplicamos cambios
+
+      onChange?.({ from, to });
       return;
     }
 
@@ -146,6 +159,7 @@ export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
 
         {/* HASTA */}
         <div className="flex flex-col gap-2">
+          {/* AQUÍ YA NO HAY (máx. hoy) */}
           <span className="font-medium text-amber-300">HASTA</span>
           <div className="flex gap-2">
             <select
