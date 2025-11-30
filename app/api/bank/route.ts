@@ -27,6 +27,13 @@ interface TransaccionResponse {
   Descripcion: string;
 }
 
+// Estructura que regresamos al registrar una transacción en BD
+type TransaccionRowMin = {
+  id_transaccion: number;
+  creada_utc: string;
+};
+
+// Join anidado tarjeta -> cuenta -> cliente
 interface TarjetaJoin {
   id_tarjeta: number;
   id_cuenta: number;
@@ -49,11 +56,6 @@ interface TarjetaJoin {
 
 type SupabaseClient = ReturnType<typeof getSupabaseServer>;
 
-type TransaccionRowMin = {
-  id_transaccion: number;
-  creada_utc: string;
-};
-
 // ---------------------------------------------------------------------------
 // Helper: registrar transacción RECHAZADA y devolver id/fecha
 // ---------------------------------------------------------------------------
@@ -65,14 +67,14 @@ async function registrarTransaccionRechazada(
   destino?: TarjetaJoin | null
 ): Promise<TransaccionRowMin | null> {
   try {
-    // Buscar ID de estado RECHAZADA
+    // Buscar ID de estado RECHAZADA en estados_transaccion
     const { data: edoRow } = await supabase
       .from("estados_transaccion")
       .select("id_estado_transaccion")
       .eq("nombre", "RECHAZADA")
       .single();
 
-    // Según tu script inicial: 1 = PENDIENTE, 2 = COMPLETADA, 3 = RECHAZADA
+    // Por defecto 3 = RECHAZADA (según tu script)
     const idEstado = edoRow?.id_estado_transaccion ?? 3;
 
     let idTarjetaOrigen: number | null = origen?.id_tarjeta ?? null;
@@ -137,7 +139,7 @@ async function registrarTransaccionRechazada(
 }
 
 // ---------------------------------------------------------------------------
-// Helper: construir voucher (TransaccionResponse) para RECHAZADA
+// Helper: construir respuesta JSON para RECHAZADA
 // ---------------------------------------------------------------------------
 async function responderErrorValidacion(
   supabase: SupabaseClient,
@@ -185,13 +187,12 @@ async function responderErrorValidacion(
 }
 
 // ---------------------------------------------------------------------------
-// Handler principal POST
+// Handler principal POST - TRANSFERENCIA
 // ---------------------------------------------------------------------------
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as TransaccionRequest;
     const supabase = getSupabaseServer();
-
     const onlyDigits = /^\d+$/;
 
     // ===================== VALIDACIONES BÁSICAS =====================
@@ -282,7 +283,25 @@ export async function POST(req: NextRequest) {
     const { data: origen, error: eOrigen } = await supabase
       .from("tarjetas")
       .select(
-        "id_tarjeta,id_cuenta,numero_tarjeta,cvv,mes_exp,anio_exp,fecha_cierre,cuentas(id_cuenta,saldo_actual,fecha_cierre,clientes(id_cliente,nombre,activo))"
+        `
+        id_tarjeta,
+        id_cuenta,
+        numero_tarjeta,
+        cvv,
+        mes_exp,
+        anio_exp,
+        fecha_cierre,
+        cuentas (
+          id_cuenta,
+          saldo_actual,
+          fecha_cierre,
+          clientes (
+            id_cliente,
+            nombre,
+            activo
+          )
+        )
+      `
       )
       .eq("numero_tarjeta", body.NumeroTarjetaOrigen)
       .single<TarjetaJoin>();
@@ -367,7 +386,17 @@ export async function POST(req: NextRequest) {
     const { data: destino, error: eDestino } = await supabase
       .from("tarjetas")
       .select(
-        "id_tarjeta,id_cuenta,numero_tarjeta,fecha_cierre,cuentas(id_cuenta,saldo_actual,fecha_cierre)"
+        `
+        id_tarjeta,
+        id_cuenta,
+        numero_tarjeta,
+        fecha_cierre,
+        cuentas (
+          id_cuenta,
+          saldo_actual,
+          fecha_cierre
+        )
+      `
       )
       .eq("numero_tarjeta", body.NumeroTarjetaDestino)
       .single<TarjetaJoin>();
@@ -466,7 +495,7 @@ export async function POST(req: NextRequest) {
       .eq("nombre", "COMPLETADA")
       .single();
 
-    const idEstado = edoRow?.id_estado_transaccion ?? 2;
+    const idEstado = edoRow?.id_estado_transaccion ?? 2; // 2 = COMPLETADA
 
     const { data: trx, error: trxErr } = await supabase
       .from("transacciones")
@@ -482,6 +511,7 @@ export async function POST(req: NextRequest) {
       .single<TransaccionRowMin>();
 
     if (trxErr || !trx) {
+      // rollback de saldos
       await supabase
         .from("cuentas")
         .update({ saldo_actual: saldoOrigen })
@@ -518,6 +548,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(respuesta, { status: 200 });
   } catch (error) {
     const detalle = error instanceof Error ? error.message : String(error);
+    console.error("Error en /api/bank:", error);
     return NextResponse.json(
       { error: "Error interno del servidor", detalle },
       { status: 500 }
