@@ -9,6 +9,11 @@ interface DateRangeFilterProps {
 }
 
 const today = new Date();
+const TODAY_NORMALIZED = new Date(
+  today.getFullYear(),
+  today.getMonth(),
+  today.getDate()
+);
 const CURRENT_YEAR = today.getFullYear();
 
 // Años disponibles
@@ -37,7 +42,7 @@ function buildDate(day: Part, month: Part, year: Part): Date | null {
   const m = Number(month);
   const d = Number(day);
   const dt = new Date(y, m - 1, d);
-  // Validar que la fecha existe (ej. 31/02 no es válido)
+  // Validar que la fecha exista (ej. 31/02 no es válido)
   if (
     dt.getFullYear() !== y ||
     dt.getMonth() !== m - 1 ||
@@ -59,28 +64,36 @@ export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
   const [toMonth, setToMonth] = useState<Part>("");
   const [toYear, setToYear] = useState<Part>("");
 
+  // Mensaje de advertencia de validaciones
+  const [warning, setWarning] = useState<string>("");
+
   const handleSave = () => {
     let from = buildDate(fromDay, fromMonth, fromYear);
     let to = buildDate(toDay, toMonth, toYear);
+    let msg = "";
 
-    // Limitar HASTA a hoy
-    if (to && to > today) {
+    // Validación 1: HASTA no puede ser futura
+    if (to && to > TODAY_NORMALIZED) {
       to = new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate()
+        TODAY_NORMALIZED.getFullYear(),
+        TODAY_NORMALIZED.getMonth(),
+        TODAY_NORMALIZED.getDate()
       );
+      msg = "La fecha HASTA fue ajustada a la fecha actual.";
     }
 
-    // Si ambas existen y HASTA < DESDE, forzar HASTA = DESDE
-    if (from && to && to < from) {
-      to = new Date(
-        from.getFullYear(),
-        from.getMonth(),
-        from.getDate()
-      );
+    // Validación 2: DESDE no puede ser mayor que HASTA
+    if (from && to && from > to) {
+      to = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+      msg = msg
+        ? msg + " Además, la fecha DESDE era mayor que HASTA, se ajustó HASTA al mismo día."
+        : "La fecha DESDE no puede ser mayor que HASTA. Se ajustó HASTA al mismo día.";
     }
 
+    // Guardar mensaje (si lo hay)
+    setWarning(msg);
+
+    // Notificar al padre
     onChange?.({ from: from ?? null, to: to ?? null });
   };
 
@@ -91,6 +104,7 @@ export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
     setToDay("");
     setToMonth("");
     setToYear("");
+    setWarning("");
     onChange?.({ from: null, to: null });
   };
 
@@ -199,6 +213,11 @@ export function DateRangeFilter({ onChange }: DateRangeFilterProps) {
           </div>
         </div>
       </div>
+
+      {/* Mensaje de advertencia */}
+      {warning && (
+        <p className="mt-3 text-xs text-amber-300">{warning}</p>
+      )}
 
       <div className="mt-4 flex justify-between text-xs">
         <button
