@@ -6,7 +6,7 @@ import "./globals.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "BANCARRATA – Global Financial Trust",
+  title: "INVERATBANK – Global Financial Trust",
   description: "Sistema bancario distribuido para pagos integrados entre comercios.",
 };
 

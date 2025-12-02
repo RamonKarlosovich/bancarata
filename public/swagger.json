@@ -1,7 +1,7 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "title": "BANCARRATA – API bancaria",
+    "title": "INVERATBANK – API bancaria",
     "version": "1.0.0",
     "description": "Servicio bancario para procesar transferencias internas entre tarjetas conectadas a cuentas bancarias."
   },
@@ -11,7 +11,7 @@
       "description": "Servidor local de desarrollo"
     },
     {
-      "url": "https://bancarrata.vercel.app",
+      "url": "https://inveratbank.vercel.app",
       "description": "Servidor en producción"
     }
   ],

@@ -187,7 +187,7 @@ export default function AdminDashboardPage() {
           <div className="flex items-center gap-3">
             <img
               src="/logo.png"
-              alt="BANCARRATA"
+              alt="INVERATBANK"
               className="h-10 w-10 object-contain"
             />
             <div>

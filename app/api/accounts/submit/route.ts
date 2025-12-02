@@ -1,7 +1,7 @@
 import { MongoClient } from 'mongodb'
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017'
-const DB_NAME = 'BANCARRATA'
+const DB_NAME = 'INVERATBANK'
 const COLLECTION_NAME = 'SOLICITUDES_CUENTA'
 
 export async function POST(request: Request) {

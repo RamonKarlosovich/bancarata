@@ -42,12 +42,12 @@
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
 
-  /* BANCARRATA Custom Colors */
-  --bancarrata-primary: #0f1b2e;
-  --bancarrata-gold: #d4af37;
-  --bancarrata-cream: #f5f1e8;
-  --bancarrata-dark: #0a0e1a;
-  --bancarrata-light: #fafaf8;
+  /* INVERATBANK Custom Colors */
+  --inveratbank-primary: #0f1b2e;
+  --inveratbank-gold: #d4af37;
+  --inveratbank-cream: #f5f1e8;
+  --inveratbank-dark: #0a0e1a;
+  --inveratbank-light: #fafaf8;
 }
 
 .dark {
@@ -136,7 +136,7 @@
 }
 
 /* ========================= */
-/*  BANCARRATA Custom Styles  */
+/*  INVERATBANK Custom Styles  */
 /* ========================= */
 
 * {
@@ -150,8 +150,8 @@ html {
 }
 
 body {
-  background-color: var(--bancarrata-primary);
-  color: var(--bancarrata-cream);
+  background-color: var(--inveratbank-primary);
+  color: var(--inveratbank-cream);
   font-family: inherit;
   line-height: 1.6;
 }
@@ -161,11 +161,11 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--bancarrata-dark);
+  background: var(--inveratbank-dark);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--bancarrata-gold);
+  background: var(--inveratbank-gold);
   border-radius: 4px;
 }
 
@@ -185,7 +185,7 @@ button {
 }
 
 a {
-  color: var(--bancarrata-gold);
+  color: var(--inveratbank-gold);
   text-decoration: none;
   transition: color 0.3s ease;
 }
