@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import Image from "next/image";
 import { LogOut, RefreshCw, Search } from "lucide-react";
 import { DateRangeFilter } from "@/components/DateRangeFilter";
 
@@ -10,29 +11,19 @@ interface Transaction {
   id_transaccion: number;
   creada_utc: string;
   nombre_cliente?: string | null;
-  servicio?: string | null;
   numero_tarjeta?: string | null;
   monto: number;
   nombre_estado: string;
   descripcion?: string | null;
 }
 
-interface Stats {
-  total: number;
-  aprobadas: number;
-  rechazadas: number;
-  monto_total: number;
-}
-
 export default function AdminDashboardPage() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
 
   // ======== FILTROS =========
   const [cliente, setCliente] = useState("");
   const [tarjeta, setTarjeta] = useState("");
-  const [servicio, setServicio] = useState("");
   const [estado, setEstado] = useState<"todos" | TransactionStatus>("todos");
   const [idTransaccion, setIdTransaccion] = useState("");
   const [desde, setDesde] = useState(""); // YYYY-MM-DD
@@ -47,12 +38,6 @@ export default function AdminDashboardPage() {
       const data = await response.json();
       const lista = (data.transacciones ?? data ?? []) as Transaction[];
       setTransactions(lista);
-
-      if (data.stats) {
-        setStats(data.stats);
-      } else {
-        setStats(null);
-      }
     } catch (error) {
       console.error("Error:", error);
     } finally {
@@ -72,7 +57,6 @@ export default function AdminDashboardPage() {
   const clearFilterState = () => {
     setCliente("");
     setTarjeta("");
-    setServicio("");
     setEstado("todos");
     setIdTransaccion("");
     setDesde("");
@@ -80,12 +64,10 @@ export default function AdminDashboardPage() {
   };
 
   const handleResetFilters = () => {
-    // Limpia filtros pero NO vuelve a pedir al backend
     clearFilterState();
   };
 
   const handleShowAll = () => {
-    // Limpia filtros y vuelve a cargar todas las transacciones desde el backend
     clearFilterState();
     fetchTransactions();
   };
@@ -136,12 +118,6 @@ export default function AdminDashboardPage() {
         if (!num.includes(q)) return false;
       }
 
-      if (servicio.trim()) {
-        const q = servicio.trim().toLowerCase();
-        const s = (tx.servicio ?? "").toLowerCase();
-        if (!s.includes(q)) return false;
-      }
-
       if (estado !== "todos") {
         if ((tx.nombre_estado ?? "").toUpperCase() !== estado) return false;
       }
@@ -159,25 +135,7 @@ export default function AdminDashboardPage() {
 
       return true;
     });
-  }, [transactions, idTransaccion, cliente, tarjeta, servicio, estado, desde, hasta]);
-
-  // ======== STATS (si backend no las manda) =========
-  const computedStats = useMemo(() => {
-    if (stats) return stats;
-
-    const total = transactions.length;
-    const aprobadas = transactions.filter(
-      (t) => t.nombre_estado === "COMPLETADA"
-    ).length;
-    const rechazadas = transactions.filter(
-      (t) => t.nombre_estado === "RECHAZADA"
-    ).length;
-    const monto_total = transactions
-      .filter((t) => t.nombre_estado === "COMPLETADA")
-      .reduce((sum, t) => sum + (t.monto || 0), 0);
-
-    return { total, aprobadas, rechazadas, monto_total };
-  }, [transactions, stats]);
+  }, [transactions, idTransaccion, cliente, tarjeta, estado, desde, hasta]);
 
   return (
     <div className="flex min-h-screen flex-col bg-[#0F1B2E] text-[#F5F1E8]">
@@ -185,11 +143,7 @@ export default function AdminDashboardPage() {
       <header className="sticky top-0 z-40 border-b border-[#D4AF37]/20 bg-[#0F1B2E]/90 backdrop-blur">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
           <div className="flex items-center gap-3">
-            <img
-              src="/logo.png"
-              alt="INVERATBANK"
-              className="h-10 w-10 object-contain"
-            />
+            <Image src="/logo.png" alt="BANCARRATA" width={40} height={40} />
             <div>
               <p className="font-bold text-[#D4AF37]">Panel Administrativo</p>
               <p className="text-xs text-slate-300">
@@ -219,7 +173,7 @@ export default function AdminDashboardPage() {
               </h2>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-5">
+            <div className="grid gap-4 md:grid-cols-4">
               {/* ID Transacción */}
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold uppercase tracking-wide text-[#D4AF37]">
@@ -259,19 +213,6 @@ export default function AdminDashboardPage() {
                 />
               </div>
 
-              {/* Servicio */}
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold uppercase tracking-wide text-[#D4AF37]">
-                  Servicio
-                </label>
-                <input
-                  value={servicio}
-                  onChange={(e) => setServicio(e.target.value)}
-                  placeholder="Mall, Spa, Cafetería..."
-                  className="rounded-lg border border-[#D4AF37]/40 bg-[#0a0e1a] px-3 py-2 text-sm text-[#F5F1E8] placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-[#D4AF37]"
-                />
-              </div>
-
               {/* Estado */}
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold uppercase tracking-wide text-[#D4AF37]">
@@ -292,7 +233,7 @@ export default function AdminDashboardPage() {
 
             {/* RANGO + BOTONES */}
             <div className="mt-2 grid gap-4 md:grid-cols-[2fr_1fr]">
-              {/* NUEVO componente de rango de fechas */}
+              {/* RANGO DE FECHAS */}
               <div className="flex flex-col gap-1">
                 <label className="text-xs font-semibold uppercase tracking-wide text-[#D4AF37]">
                   Rango de fechas
@@ -353,9 +294,6 @@ export default function AdminDashboardPage() {
                       Cliente
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-[#D4AF37]">
-                      Servicio
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-semibold text-[#D4AF37]">
                       Tarjeta
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-semibold text-[#D4AF37]">
@@ -373,7 +311,7 @@ export default function AdminDashboardPage() {
                   {loading ? (
                     <tr>
                       <td
-                        colSpan={8}
+                        colSpan={7}
                         className="px-6 py-8 text-center text-[#F5F1E8]/70"
                       >
                         Cargando...
@@ -382,7 +320,7 @@ export default function AdminDashboardPage() {
                   ) : filteredTransactions.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={8}
+                        colSpan={7}
                         className="px-6 py-8 text-center text-[#F5F1E8]/70"
                       >
                         No hay transacciones con los filtros seleccionados
@@ -402,9 +340,6 @@ export default function AdminDashboardPage() {
                         </td>
                         <td className="px-6 py-3 text-[#F5F1E8]">
                           {tx.nombre_cliente ?? "—"}
-                        </td>
-                        <td className="px-6 py-3 capitalize text-[#F5F1E8]">
-                          {tx.servicio ?? "—"}
                         </td>
                         <td className="px-6 py-3 text-xs text-[#F5F1E8]/80">
                           {tx.numero_tarjeta
@@ -439,39 +374,6 @@ export default function AdminDashboardPage() {
           </section>
         </div>
       </main>
-
-      {/* INDICADORES FIJOS ABAJO */}
-      <div className="pointer-events-none fixed bottom-4 left-1/2 z-30 w-full max-w-6xl -translate-x-1/2 px-4">
-        <div className="pointer-events-auto grid gap-4 md:grid-cols-4">
-          <div className="rounded-lg bg-blue-600 px-4 py-3 text-white shadow-lg">
-            <p className="text-sm font-semibold">Total Transacciones</p>
-            <p className="mt-1 text-3xl font-bold leading-none">
-              {computedStats.total}
-            </p>
-          </div>
-
-          <div className="rounded-lg bg-green-600 px-4 py-3 text-white shadow-lg">
-            <p className="text-sm font-semibold">Exitosas</p>
-            <p className="mt-1 text-3xl font-bold leading-none">
-              {computedStats.aprobadas}
-            </p>
-          </div>
-
-          <div className="rounded-lg bg-red-600 px-4 py-3 text-white shadow-lg">
-            <p className="text-sm font-semibold">Rechazadas</p>
-            <p className="mt-1 text-3xl font-bold leading-none">
-              {computedStats.rechazadas}
-            </p>
-          </div>
-
-          <div className="rounded-lg bg-gradient-to-br from-[#D4AF37] to-yellow-600 px-4 py-3 text-[#0F1B2E] shadow-lg">
-            <p className="text-sm font-semibold">Monto Total Aprobado</p>
-            <p className="mt-1 text-3xl font-extrabold leading-none">
-              ${computedStats.monto_total.toFixed(2)}
-            </p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
