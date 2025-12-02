@@ -3,14 +3,35 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/db/supabaseClient";
 
 type TransaccionRow = {
-  id_transaccion: number;
-  tipo: string | null;
-  monto: number;
-  id_tarjeta_origen: number | null;
-  id_tarjeta_destino: number | null;
-  descripcion: string | null;
-  creada_utc: string;
-  id_estado_transaccion: number | null;
+  IdTransaccion: number;
+  Tipo: string | null;
+  Monto: number;
+  TarjetaOrigenId: number | null;
+  TarjetaDestinoId: number | null;
+  Descripcion: string | null;
+  CreadaUTC: string;
+  IdEdoTransaccion: number | null;
+};
+
+type TarjetaRow = {
+  IdTarjeta: number;
+  IdCuenta: number | null;
+  NumeroTarjeta: string | null;
+};
+
+type CuentaRow = {
+  IdCuenta: number;
+  IdCliente: number | null;
+};
+
+type ClienteRow = {
+  IdCliente: number;
+  Nombre: string | null;
+};
+
+type EstadoRow = {
+  IdEdoTransaccion: number;
+  NomEdo: string | null;
 };
 
 export async function GET(req: NextRequest) {
@@ -18,54 +39,47 @@ export async function GET(req: NextRequest) {
     const supabase = getSupabaseServer();
     const { searchParams } = new URL(req.url);
 
-    const clienteParam = searchParams.get("cliente"); // nombre o tarjeta (opcional)
-    const estadoParam = searchParams.get("estado");   // COMPLETADA / RECHAZADA / PENDIENTE (opcional)
-    const desde = searchParams.get("desde");          // YYYY-MM-DD (opcional)
-    const hasta = searchParams.get("hasta");          // YYYY-MM-DD (opcional)
+    const clienteParam = searchParams.get("cliente");
+    const estadoParam = searchParams.get("estado");
+    const desde = searchParams.get("desde"); // YYYY-MM-DD
+    const hasta = searchParams.get("hasta"); // YYYY-MM-DD
     const limit = Number(searchParams.get("limit") ?? "500");
 
-    // ================== 1) LEER TRANSACCIONES BASE ==================
+    // 1) Transacciones base
     let txQuery = supabase
-      .from("transacciones")
+      .from("Transacciones")
       .select(
         `
-        id_transaccion,
-        tipo,
-        monto,
-        id_tarjeta_origen,
-        id_tarjeta_destino,
-        descripcion,
-        creada_utc,
-        id_estado_transaccion
-        `
+        IdTransaccion,
+        Tipo,
+        Monto,
+        TarjetaOrigenId,
+        TarjetaDestinoId,
+        Descripcion,
+        CreadaUTC,
+        IdEdoTransaccion
+      `
       )
-      .order("creada_utc", { ascending: false })
+      .order("CreadaUTC", { ascending: false })
       .limit(limit);
 
-    // Filtro por fechas a nivel de BD
     if (desde) {
-      txQuery = txQuery.gte("creada_utc", desde);
+      txQuery = txQuery.gte("CreadaUTC", `${desde} 00:00:00`);
     }
     if (hasta) {
-      txQuery = txQuery.lte("creada_utc", hasta);
+      txQuery = txQuery.lte("CreadaUTC", `${hasta} 23:59:59`);
     }
 
-    const { data: txRows, error: txError } = await txQuery;
+    const { data: txRowsRaw, error: txError } = await txQuery;
 
     if (txError) {
-      console.error("Error consultando transacciones:", txError);
-      return NextResponse.json(
-        {
-          mensaje: "Error obteniendo transacciones",
-          detalle: txError.message,
-        },
-        { status: 500 }
-      );
+      console.error("ERROR Transacciones:", txError);
+      return NextResponse.json({ error: txError.message }, { status: 500 });
     }
 
-    const transaccionesBase: TransaccionRow[] = (txRows ?? []) as any[];
+    const txRows = (txRowsRaw ?? []) as TransaccionRow[];
 
-    if (transaccionesBase.length === 0) {
+    if (txRows.length === 0) {
       return NextResponse.json(
         {
           transacciones: [],
@@ -75,177 +89,153 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // ================== 2) LEER TABLAS RELACIONADAS ==================
-
-    // IDs de tarjetas (usamos la de ORIGEN para mostrar en el panel)
+    // 2) IDs relacionados
     const tarjetaIds = Array.from(
-      new Set(
-        transaccionesBase
-          .map((t) => t.id_tarjeta_origen)
-          .filter((v): v is number => v != null)
-      )
+      new Set(txRows.map(t => t.TarjetaOrigenId).filter((v): v is number => v != null))
     );
 
     const estadoIds = Array.from(
-      new Set(
-        transaccionesBase
-          .map((t) => t.id_estado_transaccion)
-          .filter((v): v is number => v != null)
-      )
+      new Set(txRows.map(t => t.IdEdoTransaccion).filter((v): v is number => v != null))
     );
 
-    const [
-      { data: tarjetasData, error: tarjetasError },
-      { data: estadosData, error: estadosError },
-    ] = await Promise.all([
+    // 3) Tarjetas y estados
+    const [tarjetasResp, estadosResp] = await Promise.all([
       tarjetaIds.length
         ? supabase
-            .from("tarjetas")
-            .select(`id_tarjeta, id_cuenta, numero_tarjeta`)
-            .in("id_tarjeta", tarjetaIds)
-        : Promise.resolve({ data: [] as any[], error: null }),
+            .from("Tarjetas")
+            .select(`IdTarjeta, IdCuenta, NumeroTarjeta`)
+            .in("IdTarjeta", tarjetaIds)
+        : Promise.resolve({ data: null, error: null }),
       estadoIds.length
         ? supabase
-            .from("estados_transaccion")
-            .select(`id_estado_transaccion, nombre`)
-            .in("id_estado_transaccion", estadoIds)
-        : Promise.resolve({ data: [] as any[], error: null }),
+            .from("EstadosTransaccion")
+            .select(`IdEdoTransaccion, NomEdo`)
+            .in("IdEdoTransaccion", estadoIds)
+        : Promise.resolve({ data: null, error: null }),
     ]);
 
-    if (tarjetasError) console.error("Error consultando tarjetas:", tarjetasError);
-    if (estadosError) console.error("Error consultando estados:", estadosError);
+    if (tarjetasResp.error) {
+      console.error("ERROR Tarjetas:", tarjetasResp.error);
+    }
+    if (estadosResp.error) {
+      console.error("ERROR EstadosTransaccion:", estadosResp.error);
+    }
 
-    const tarjetas = (tarjetasData ?? []) as any[];
-    const estados = (estadosData ?? []) as any[];
+    const tarjetas = (tarjetasResp.data ?? []) as TarjetaRow[];
+    const estados = (estadosResp.data ?? []) as EstadoRow[];
 
-    // Cuentas a partir de tarjetas
+    // 4) Cuentas
     const cuentaIds = Array.from(
-      new Set(
-        tarjetas
-          .map((t) => t.id_cuenta)
-          .filter((v: any): v is number => v != null)
-      )
+      new Set(tarjetas.map(t => t.IdCuenta).filter((v): v is number => v != null))
     );
 
-    const { data: cuentasData, error: cuentasError } = cuentaIds.length
+    const { data: cuentasRaw, error: cuentasError } = cuentaIds.length
       ? await supabase
-          .from("cuentas")
-          .select(`id_cuenta, id_cliente`)
-          .in("id_cuenta", cuentaIds)
-      : { data: [] as any[], error: null };
+          .from("Cuentas")
+          .select(`IdCuenta, IdCliente`)
+          .in("IdCuenta", cuentaIds)
+      : { data: null, error: null };
 
-    if (cuentasError) console.error("Error consultando cuentas:", cuentasError);
+    if (cuentasError) {
+      console.error("ERROR Cuentas:", cuentasError);
+    }
 
-    const cuentas = (cuentasData ?? []) as any[];
+    const cuentas = (cuentasRaw ?? []) as CuentaRow[];
 
-    // Clientes a partir de cuentas
+    // 5) Clientes
     const clienteIds = Array.from(
-      new Set(
-        cuentas
-          .map((c) => c.id_cliente)
-          .filter((v: any): v is number => v != null)
-      )
+      new Set(cuentas.map(c => c.IdCliente).filter((v): v is number => v != null))
     );
 
-    const { data: clientesData, error: clientesError } = clienteIds.length
+    const { data: clientesRaw, error: clientesError } = clienteIds.length
       ? await supabase
-          .from("clientes")
-          .select(`id_cliente, nombre`)
-          .in("id_cliente", clienteIds)
-      : { data: [] as any[], error: null };
+          .from("Clientes")
+          .select(`IdCliente, Nombre`)
+          .in("IdCliente", clienteIds)
+      : { data: null, error: null };
 
-    if (clientesError) console.error("Error consultando clientes:", clientesError);
+    if (clientesError) {
+      console.error("ERROR Clientes:", clientesError);
+    }
 
-    const clientes = (clientesData ?? []) as any[];
+    const clientes = (clientesRaw ?? []) as ClienteRow[];
 
-    // ================== 3) MAPS DE APOYO ==================
+    // 6) Maps de apoyo (ya sin null)
+    const tarjetasById = new Map<number, TarjetaRow>();
+    tarjetas.forEach(t => tarjetasById.set(t.IdTarjeta, t));
 
-    const tarjetasById = new Map<number, any>();
-    tarjetas.forEach((t) => tarjetasById.set(t.id_tarjeta, t));
+    const cuentasById = new Map<number, CuentaRow>();
+    cuentas.forEach(c => cuentasById.set(c.IdCuenta, c));
 
-    const cuentasById = new Map<number, any>();
-    cuentas.forEach((c) => cuentasById.set(c.id_cuenta, c));
-
-    const clientesById = new Map<number, any>();
-    clientes.forEach((c) => clientesById.set(c.id_cliente, c));
+    const clientesById = new Map<number, ClienteRow>();
+    clientes.forEach(c => clientesById.set(c.IdCliente, c));
 
     const estadosById = new Map<number, string>();
-    estados.forEach((e) =>
-      estadosById.set(e.id_estado_transaccion, (e.nombre as string) ?? "")
-    );
+    estados.forEach(e => {
+      if (e.NomEdo != null) {
+        estadosById.set(e.IdEdoTransaccion, e.NomEdo);
+      }
+    });
 
-    // ================== 4) ARMAR OBJETOS PARA EL DASHBOARD ==================
-
-    const transacciones = transaccionesBase.map((tx) => {
-      const tarjeta = tx.id_tarjeta_origen
-        ? tarjetasById.get(tx.id_tarjeta_origen)
+    // 7) Armar respuesta para el dashboard
+    const transacciones = txRows.map(tx => {
+      const tarjeta = tx.TarjetaOrigenId
+        ? tarjetasById.get(tx.TarjetaOrigenId)
         : undefined;
-      const cuenta = tarjeta ? cuentasById.get(tarjeta.id_cuenta) : undefined;
-      const clienteRow = cuenta ? clientesById.get(cuenta.id_cliente) : undefined;
-      const estadoNombre = tx.id_estado_transaccion
-        ? estadosById.get(tx.id_estado_transaccion)
+      const cuenta = tarjeta?.IdCuenta ? cuentasById.get(tarjeta.IdCuenta) : undefined;
+      const clienteRow = cuenta?.IdCliente
+        ? clientesById.get(cuenta.IdCliente)
+        : undefined;
+      const estadoNombre = tx.IdEdoTransaccion
+        ? estadosById.get(tx.IdEdoTransaccion) ?? null
         : null;
 
       return {
-        id_transaccion: tx.id_transaccion,
-        creada_utc: tx.creada_utc,
-        nombre_cliente: clienteRow?.nombre ?? null,
-        servicio: null as string | null, // ya no se usa
-        numero_tarjeta: tarjeta?.numero_tarjeta ?? null,
-        monto: tx.monto,
+        id_transaccion: tx.IdTransaccion,
+        creada_utc: tx.CreadaUTC,
+        nombre_cliente: clienteRow?.Nombre ?? null,
+        numero_tarjeta: tarjeta?.NumeroTarjeta ?? null,
+        monto: tx.Monto,
         nombre_estado: estadoNombre ? estadoNombre.toUpperCase() : null,
-        descripcion: tx.descripcion ?? null,
+        descripcion: tx.Descripcion ?? null,
       };
     });
 
-    // ================== 5) FILTROS EN MEMORIA (cliente / estado) ==================
-
+    // 8) Filtros en memoria
     let filtradas = transacciones;
 
     if (clienteParam) {
       const q = clienteParam.toLowerCase();
-      const qNum = clienteParam.replace(/\s+/g, "");
-      filtradas = filtradas.filter((t) => {
-        const nombre = (t.nombre_cliente ?? "").toLowerCase();
-        const num = (t.numero_tarjeta ?? "").replace(/\s+/g, "");
-        return nombre.includes(q) || num.includes(qNum);
-      });
-    }
-
-    if (estadoParam) {
-      const target = estadoParam.toUpperCase();
-      filtradas = filtradas.filter(
-        (t) => (t.nombre_estado ?? "").toUpperCase() === target
+      filtradas = filtradas.filter(t =>
+        (t.nombre_cliente ?? "").toLowerCase().includes(q)
       );
     }
 
-    // ================== 6) KPIs ==================
+    if (estadoParam) {
+      const q = estadoParam.toUpperCase();
+      filtradas = filtradas.filter(t => (t.nombre_estado ?? "") === q);
+    }
 
+    // 9) KPIs
     const total = filtradas.length;
-    const aprobadas = filtradas.filter(
-      (t) => t.nombre_estado === "COMPLETADA" || t.nombre_estado === "APROBADA"
-    ).length;
-    const rechazadas = filtradas.filter(
-      (t) => t.nombre_estado === "RECHAZADA"
-    ).length;
+    const aprobadas = filtradas.filter(t => t.nombre_estado === "COMPLETADA").length;
+    const rechazadas = filtradas.filter(t => t.nombre_estado === "RECHAZADA").length;
     const monto_total = filtradas.reduce(
       (acc, t) => acc + Number(t.monto ?? 0),
       0
     );
 
-    const stats = { total, aprobadas, rechazadas, monto_total };
-
     return NextResponse.json(
-      { transacciones: filtradas, stats },
+      {
+        transacciones: filtradas,
+        stats: { total, aprobadas, rechazadas, monto_total },
+      },
       { status: 200 }
     );
   } catch (err: any) {
-    console.error("Error en /api/transactions GET:", err);
+    console.error("Error grave en GET /transactions:", err);
     return NextResponse.json(
-      {
-        mensaje: "Error interno del servidor",
-        detalle: err?.message ?? String(err),
-      },
+      { error: err?.message ?? "Error interno" },
       { status: 500 }
     );
   }
