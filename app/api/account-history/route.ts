@@ -1,3 +1,4 @@
+// app/api/account-history/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/db/supabaseClient";
 
@@ -6,7 +7,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
 
     const numeroCuenta = searchParams.get("numeroCuenta");
-    const tipoMovimiento = searchParams.get("tipoMovimiento"); // DEBITO / CREDITO
+    const tipoMovimiento = searchParams.get("tipoMovimiento"); // DEBITO / CREDITO / FALLIDO
     const from = searchParams.get("from"); // YYYY-MM-DD
     const to = searchParams.get("to");     // YYYY-MM-DD
     const page = parseInt(searchParams.get("page") ?? "1", 10);
