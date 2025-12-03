@@ -1,4 +1,3 @@
-// app/api/account-history/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/db/supabaseClient";
 
@@ -7,7 +6,6 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
 
     const numeroCuenta = searchParams.get("numeroCuenta");
-    const idCliente = searchParams.get("idCliente");
     const tipoMovimiento = searchParams.get("tipoMovimiento"); // DEBITO / CREDITO
     const from = searchParams.get("from"); // YYYY-MM-DD
     const to = searchParams.get("to");     // YYYY-MM-DD
@@ -19,7 +17,6 @@ export async function GET(req: NextRequest) {
 
     const supabase = getSupabaseServer();
 
-    // Empezamos el query sobre la VISTA movimientos_cuenta
     let query = supabase
       .from("movimientos_cuenta")
       .select(
@@ -30,9 +27,13 @@ export async function GET(req: NextRequest) {
         numero_cuenta,
         nombre_cliente,
         tipo_movimiento,
+        tipo_transaccion,
         monto,
         saldo_antes,
         saldo_despues,
+        comercio,
+        concepto_compra,
+        numero_tarjeta,
         id_transaccion,
         descripcion,
         resultado,
@@ -43,17 +44,8 @@ export async function GET(req: NextRequest) {
       )
       .order("fecha", { ascending: false });
 
-    // Filtros dinámicos
     if (numeroCuenta) {
       query = query.eq("numero_cuenta", numeroCuenta);
-    }
-
-    if (idCliente) {
-      // filtramos por id_cliente a través de la tabla cuentas
-      // Lo dejamos solo con numeroCuenta / rango de fechas.
-      console.warn(
-        "Filtro por idCliente no implementado directamente en movimientos_cuenta"
-      );
     }
 
     if (tipoMovimiento) {
@@ -61,7 +53,6 @@ export async function GET(req: NextRequest) {
     }
 
     if (from) {
-      // asumimos from en formato 'YYYY-MM-DD'
       query = query.gte("fecha", from);
     }
 
@@ -69,7 +60,6 @@ export async function GET(req: NextRequest) {
       query = query.lte("fecha", to + " 23:59:59");
     }
 
-    // Paginación
     query = query.range(fromIdx, toIdx);
 
     const { data, error, count } = await query;
