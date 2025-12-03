@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { LogOut, RefreshCw, Search } from "lucide-react";
 import { DateRangeFilter } from "@/components/DateRangeFilter";
 
@@ -151,13 +152,24 @@ export default function AdminDashboardPage() {
               </p>
             </div>
           </div>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm text-[#D4AF37] transition hover:bg-[#D4AF37]/10"
-          >
-            <LogOut size={18} />
-            Salir
-          </button>
+
+          {/* Botones: Historial de cuentas + Salir */}
+          <div className="flex items-center gap-3">
+            <Link
+              href="/admin/historial-cuentas"
+              className="rounded-lg border border-[#D4AF37]/40 px-4 py-2 text-sm text-[#D4AF37] transition hover:bg-[#D4AF37]/10"
+            >
+              Historial de cuentas
+            </Link>
+
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm text-[#D4AF37] transition hover:bg-[#D4AF37]/10"
+            >
+              <LogOut size={18} />
+              Salir
+            </button>
+          </div>
         </div>
       </header>
 

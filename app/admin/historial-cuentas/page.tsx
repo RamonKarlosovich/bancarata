@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
+import Link from "next/link";
 
 type Movimiento = {
   id_movimiento: number;
@@ -25,27 +26,65 @@ export default function HistorialCuentasPage() {
   const [hasta, setHasta] = useState("");
   const [movimientos, setMovimientos] = useState<Movimiento[]>([]);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const today = useMemo(
+    () => new Date().toISOString().slice(0, 10),
+    []
+  );
 
   async function buscar() {
     setLoading(true);
+    setErrorMsg(null);
+
+    if (desde && hasta && desde > hasta) {
+      setErrorMsg("La fecha DESDE no puede ser mayor que la fecha HASTA.");
+      setLoading(false);
+      return;
+    }
+
+    if (hasta && hasta > today) {
+      setErrorMsg("La fecha HASTA no puede ser mayor a la fecha actual.");
+      setLoading(false);
+      return;
+    }
 
     const params = new URLSearchParams();
-    if (numeroCuenta) params.set("numeroCuenta", numeroCuenta);
+
+    if (numeroCuenta.trim()) params.set("numeroCuenta", numeroCuenta.trim());
     if (tipoMovimiento) params.set("tipoMovimiento", tipoMovimiento);
     if (desde) params.set("from", desde);
     if (hasta) params.set("to", hasta);
 
-    const res = await fetch(`/api/account-history?${params.toString()}`);
-    const json = await res.json();
-    setMovimientos(json.data || []);
-    setLoading(false);
+    try {
+      const res = await fetch(`/api/account-history?${params.toString()}`);
+      const json = await res.json();
+      setMovimientos(json.data || []);
+    } catch (err) {
+      console.error("Error cargando historial de cuentas:", err);
+      setErrorMsg("Ocurrió un error al cargar el historial.");
+      setMovimientos([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <div className="p-6 text-white">
-      <h1 className="text-2xl font-bold text-yellow-300 mb-4">
-        Historial de cuentas
-      </h1>
+
+      {/* Título + botón Salir */}
+      <div className="flex items-center justify-between mb-4">
+        <h1 className="text-2xl font-bold text-yellow-300">
+          Historial de cuentas
+        </h1>
+
+        <Link
+          href="/admin/transactions"
+          className="px-4 py-2 rounded-full bg-yellow-400 text-slate-900 font-semibold text-sm hover:bg-yellow-300 transition"
+        >
+          Salir
+        </Link>
+      </div>
 
       {/* FILTROS */}
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4 bg-slate-800 p-4 rounded-xl border border-slate-700">
@@ -78,6 +117,7 @@ export default function HistorialCuentasPage() {
             type="date"
             className="bg-slate-900 border border-slate-700 p-2 rounded-md"
             value={desde}
+            max={hasta || today}
             onChange={(e) => setDesde(e.target.value)}
           />
         </div>
@@ -88,6 +128,7 @@ export default function HistorialCuentasPage() {
             type="date"
             className="bg-slate-900 border border-slate-700 p-2 rounded-md"
             value={hasta}
+            max={today}
             onChange={(e) => setHasta(e.target.value)}
           />
         </div>
@@ -101,6 +142,10 @@ export default function HistorialCuentasPage() {
           </button>
         </div>
       </div>
+
+      {errorMsg && (
+        <div className="mt-3 text-sm text-red-400">{errorMsg}</div>
+      )}
 
       {/* TABLA */}
       <div className="mt-6 overflow-x-auto border border-slate-700 rounded-xl">
@@ -123,15 +168,11 @@ export default function HistorialCuentasPage() {
           <tbody>
             {movimientos.map((m) => (
               <tr key={m.id_movimiento} className="odd:bg-slate-800 even:bg-slate-850">
-                <td className="p-2">
-                  {new Date(m.fecha).toLocaleString()}
-                </td>
+                <td className="p-2">{new Date(m.fecha).toLocaleString()}</td>
                 <td className="p-2">{m.numero_cuenta}</td>
                 <td className="p-2">{m.nombre_cliente}</td>
                 <td className="p-2">
-                  {m.numero_tarjeta
-                    ? "**** **** **** " + m.numero_tarjeta.slice(-4)
-                    : "—"}
+                  {m.numero_tarjeta ? "**** **** **** " + m.numero_tarjeta.slice(-4) : "—"}
                 </td>
                 <td className="p-2">
                   <span
@@ -146,9 +187,7 @@ export default function HistorialCuentasPage() {
                 </td>
                 <td className="p-2">{m.tipo_transaccion}</td>
                 <td className="p-2">{m.comercio ?? "—"}</td>
-                <td className="p-2">
-                  {m.concepto_compra ?? m.descripcion ?? "—"}
-                </td>
+                <td className="p-2">{m.concepto_compra ?? m.descripcion ?? "—"}</td>
                 <td className="p-2 text-right">${m.monto.toFixed(2)}</td>
                 <td className="p-2 text-right">${m.saldo_antes.toFixed(2)}</td>
                 <td className="p-2 text-right">${m.saldo_despues.toFixed(2)}</td>
