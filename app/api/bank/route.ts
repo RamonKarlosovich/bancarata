@@ -57,6 +57,132 @@ interface TarjetaJoin {
 type SupabaseClient = ReturnType<typeof getSupabaseServer>;
 
 // ---------------------------------------------------------------------------
+// Helpers de logging
+// ---------------------------------------------------------------------------
+function maskCard(num?: string | null) {
+  if (!num) return null;
+  const last4 = String(num).slice(-4);
+  return "************" + last4;
+}
+
+function maskRequest(body: TransaccionRequest) {
+  return {
+    ...body,
+    NumeroTarjetaOrigen: maskCard(body.NumeroTarjetaOrigen),
+    NumeroTarjetaDestino: maskCard(body.NumeroTarjetaDestino),
+    Cvv: "***",
+  };
+}
+
+function getCampoErrorFromMensaje(mensaje: string): string | null {
+  const m = mensaje.toLowerCase();
+
+  if (m.includes("fondos insuficientes")) return "Monto";
+  if (m.includes("número de tarjeta origen") || m.includes("numero de tarjeta origen")) return "NumeroTarjetaOrigen";
+  if (m.includes("número de tarjeta destino") || m.includes("numero de tarjeta destino")) return "NumeroTarjetaDestino";
+
+  if (m.includes("tarjeta origen")) return "NumeroTarjetaOrigen";
+  if (m.includes("tarjeta destino")) return "NumeroTarjetaDestino";
+  if (m.includes("cuenta origen")) return "CuentaOrigen";
+  if (m.includes("cuenta destino")) return "CuentaDestino";
+
+  if (m.includes("cvv")) return "Cvv";
+  if (m.includes("nombre")) return "NombreCliente";
+  if (m.includes("mes de expiración") || m.includes("mes de expiracion")) return "MesExp";
+  if (m.includes("año de expiración") || m.includes("anio de expiración") || m.includes("anio de expiracion")) return "AnioExp";
+  if (m.includes("monto")) return "Monto";
+
+  return null;
+}
+
+type ResultadoTransaccionEnum =
+  | "APROBADA"
+  | "RECHAZADA_DATOS"
+  | "RECHAZADA_SALDO"
+  | "ERROR_INTERNO";
+
+async function registrarLogTransaccion(opts: {
+  supabase: SupabaseClient;
+  body?: TransaccionRequest;
+  respuesta: any;
+  resultado: ResultadoTransaccionEnum;
+  motivo_corto: string;
+  campo_error?: string | null;
+  id_transaccion?: number | null;
+  origen?: TarjetaJoin | null;
+  destino?: TarjetaJoin | null;
+  saldo_origen_antes?: number | null;
+  saldo_origen_despues?: number | null;
+  saldo_destino_antes?: number | null;
+  saldo_destino_despues?: number | null;
+}) {
+  const {
+    supabase,
+    body,
+    respuesta,
+    resultado,
+    motivo_corto,
+    campo_error,
+    id_transaccion,
+    origen,
+    destino,
+    saldo_origen_antes,
+    saldo_origen_despues,
+    saldo_destino_antes,
+    saldo_destino_despues,
+  } = opts;
+
+  try {
+    // Si tenemos body usamos sus datos, si no, todos null
+    const requestMasked = body ? maskRequest(body) : null;
+
+    const numero_tarjeta_origen = body?.NumeroTarjetaOrigen
+      ? maskCard(body.NumeroTarjetaOrigen)
+      : null;
+    const numero_tarjeta_destino = body?.NumeroTarjetaDestino
+      ? maskCard(body.NumeroTarjetaDestino)
+      : null;
+    const nombre_cliente = body?.NombreCliente ?? null;
+    const monto = body?.Monto != null ? Number(body.Monto) : null;
+
+    // Saldos: si no nos pasan explícitos, usamos los de origen/destino si existen
+    const saldoOriAntes =
+      saldo_origen_antes ??
+      (origen?.cuentas ? Number(origen.cuentas.saldo_actual) : null);
+    const saldoOriDespues =
+      saldo_origen_despues != null ? saldo_origen_despues : saldoOriAntes;
+
+    const saldoDesAntes =
+      saldo_destino_antes ??
+      (destino?.cuentas ? Number(destino.cuentas.saldo_actual) : null);
+    const saldoDesDespues =
+      saldo_destino_despues != null ? saldo_destino_despues : saldoDesAntes;
+
+    await supabase.from("logs_transacciones").insert({
+      id_transaccion: id_transaccion ?? null,
+      numero_tarjeta_origen,
+      numero_tarjeta_destino,
+      nombre_cliente,
+      monto,
+
+      resultado,
+      motivo_corto,
+      campo_error: campo_error ?? null,
+
+      saldo_origen_antes: saldoOriAntes,
+      saldo_origen_despues: saldoOriDespues,
+      saldo_destino_antes: saldoDesAntes,
+      saldo_destino_despues: saldoDesDespues,
+
+      request_json: requestMasked,
+      response_json: respuesta,
+    });
+  } catch (err) {
+    console.error("Error al registrar log en logs_transacciones:", err);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Helper: registrar transacción RECHAZADA y devolver id/fecha
 // ---------------------------------------------------------------------------
 async function registrarTransaccionRechazada(
@@ -139,7 +265,7 @@ async function registrarTransaccionRechazada(
 }
 
 // ---------------------------------------------------------------------------
-// Helper: construir respuesta JSON para RECHAZADA
+// Helper: construir respuesta JSON para RECHAZADA + LOG
 // ---------------------------------------------------------------------------
 async function responderErrorValidacion(
   supabase: SupabaseClient,
@@ -183,6 +309,30 @@ async function responderErrorValidacion(
     Descripcion: mensaje,
   };
 
+  // Determinar resultado del enum
+  let resultado: ResultadoTransaccionEnum = "RECHAZADA_DATOS";
+  if (mensaje === "Fondos insuficientes") {
+    resultado = "RECHAZADA_SALDO";
+  }
+  if (status >= 500) {
+    resultado = "ERROR_INTERNO";
+  }
+
+  const campo_error =
+    getCampoErrorFromMensaje(mensaje) ?? undefined;
+
+  await registrarLogTransaccion({
+    supabase,
+    body,
+    respuesta,
+    resultado,
+    motivo_corto: mensaje,
+    campo_error,
+    id_transaccion: trx?.id_transaccion ?? null,
+    origen: origen ?? null,
+    destino: destino ?? null,
+  });
+
   return NextResponse.json(respuesta, { status });
 }
 
@@ -190,9 +340,10 @@ async function responderErrorValidacion(
 // Handler principal POST - TRANSFERENCIA
 // ---------------------------------------------------------------------------
 export async function POST(req: NextRequest) {
+  const supabase = getSupabaseServer();
+
   try {
     const body = (await req.json()) as TransaccionRequest;
-    const supabase = getSupabaseServer();
     const onlyDigits = /^\d+$/;
 
     // ===================== VALIDACIONES BÁSICAS =====================
@@ -445,9 +596,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const saldoDestinoOriginal = Number(destino.cuentas.saldo_actual);
     const nuevoSaldoOrigen = saldoOrigen - Number(body.Monto);
     const nuevoSaldoDestino =
-      Number(destino.cuentas.saldo_actual) + Number(body.Monto);
+      saldoDestinoOriginal + Number(body.Monto);
 
     // ===================== ACTUALIZAR SALDOS =====================
     const { error: debErr } = await supabase
@@ -518,7 +670,7 @@ export async function POST(req: NextRequest) {
         .eq("id_cuenta", origen.cuentas.id_cuenta);
       await supabase
         .from("cuentas")
-        .update({ saldo_actual: destino.cuentas.saldo_actual })
+        .update({ saldo_actual: saldoDestinoOriginal })
         .eq("id_cuenta", destino.cuentas.id_cuenta);
 
       return responderErrorValidacion(
@@ -545,13 +697,46 @@ export async function POST(req: NextRequest) {
       Descripcion: "Transferencia realizada con éxito",
     };
 
+    // LOG de transacción aprobada
+    await registrarLogTransaccion({
+      supabase,
+      body,
+      respuesta,
+      resultado: "APROBADA",
+      motivo_corto: "Transacción aprobada",
+      campo_error: null,
+      id_transaccion: trx.id_transaccion,
+      origen,
+      destino,
+      saldo_origen_antes: saldoOrigen,
+      saldo_origen_despues: nuevoSaldoOrigen,
+      saldo_destino_antes: saldoDestinoOriginal,
+      saldo_destino_despues: nuevoSaldoDestino,
+    });
+
     return NextResponse.json(respuesta, { status: 200 });
   } catch (error) {
     const detalle = error instanceof Error ? error.message : String(error);
     console.error("Error en /api/bank:", error);
-    return NextResponse.json(
-      { error: "Error interno del servidor", detalle },
-      { status: 500 }
-    );
+
+    const respuestaError = {
+      error: "Error interno del servidor",
+      detalle,
+    };
+
+    // Log de error interno (cuando algo se fue al catch)
+    await registrarLogTransaccion({
+      supabase,
+      body: undefined,
+      respuesta: respuestaError,
+      resultado: "ERROR_INTERNO",
+      motivo_corto: "Error inesperado en /api/bank",
+      campo_error: null,
+      id_transaccion: null,
+      origen: null,
+      destino: null,
+    });
+
+    return NextResponse.json(respuestaError, { status: 500 });
   }
 }
