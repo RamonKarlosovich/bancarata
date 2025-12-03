@@ -91,10 +91,10 @@ export default function HistorialCuentasPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ✅ Aquí se invierten los colores: FALLIDO rojo, movimientos efectuados verde
   const getMovimientoClass = (tipo: MovimientoTipo) => {
-    if (tipo === "DEBITO") return "text-red-400 font-bold";
-    if (tipo === "CREDITO") return "text-green-400 font-bold";
-    return "text-yellow-300 font-bold"; // FALLIDO
+    if (tipo === "FALLIDO") return "text-red-400 font-bold";
+    return "text-green-400 font-bold"; // DEBITO y CREDITO
   };
 
   return (
