@@ -16,16 +16,8 @@ interface Transaction {
   descripcion?: string | null;
 }
 
-interface Stats {
-  total: number;
-  aprobadas: number;
-  rechazadas: number;
-  monto_total: number;
-}
-
 export default function AdminTransactionsDashboard() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
 
   // ======== FILTROS =========
@@ -37,7 +29,7 @@ export default function AdminTransactionsDashboard() {
   const [desde, setDesde] = useState(""); // fecha desde (YYYY-MM-DD)
   const [hasta, setHasta] = useState(""); // fecha hasta (YYYY-MM-DD)
 
-  // NUEVO: controla si se ve el panel de rango de fechas
+  // controla si se ve el panel de rango de fechas
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   const fetchTransactions = async () => {
@@ -48,15 +40,9 @@ export default function AdminTransactionsDashboard() {
 
       const data = await response.json();
 
-      // El endpoint /api/transactions devuelve { transacciones, stats }
+      // El endpoint /api/transactions devuelve { transacciones, stats } pero aquí sólo usamos transacciones
       const lista = (data.transacciones ?? data ?? []) as Transaction[];
       setTransactions(lista);
-
-      if (data.stats) {
-        setStats(data.stats);
-      } else {
-        setStats(null);
-      }
     } catch (error) {
       console.error("Error:", error);
     } finally {
@@ -131,23 +117,6 @@ export default function AdminTransactionsDashboard() {
     });
   }, [transactions, idTransaccion, cliente, tarjeta, servicio, estado, desde, hasta]);
 
-  // ======== STATS (si el backend no los manda) =========
-  const computedStats = useMemo(() => {
-    if (stats) return stats;
-    const total = transactions.length;
-    const aprobadas = transactions.filter(
-      (t) => t.nombre_estado === "COMPLETADA"
-    ).length;
-    const rechazadas = transactions.filter(
-      (t) => t.nombre_estado === "RECHAZADA"
-    ).length;
-    const monto_total = transactions
-      .filter((t) => t.nombre_estado === "COMPLETADA")
-      .reduce((sum, t) => sum + (t.monto || 0), 0);
-
-    return { total, aprobadas, rechazadas, monto_total };
-  }, [transactions, stats]);
-
   // Helper para mostrar el rango en formato dd/mm/aaaa
   const formatDateLabel = (value: string) => {
     if (!value) return "";
@@ -163,9 +132,8 @@ export default function AdminTransactionsDashboard() {
       : "Selecciona un rango de fechas";
 
   return (
-    <div className="relative flex min-h[calc(100vh-64px)] flex-col bg-[#0F1B2E] text-[#F5F1E8]">
-      {/* Contenido con scroll; dejamos espacio abajo para los indicadores */}
-      <div className="flex-1 overflow-auto pb-40">
+    <div className="flex min-h[calc(100vh-64px)] flex-col bg-[#0F1B2E] text-[#F5F1E8]">
+      <div className="flex-1 overflow-auto pb-10">
         <div className="mx-auto max-w-7xl space-y-8 px-6 py-8">
           {/* Filtros de búsqueda */}
           <div className="space-y-4 rounded-lg border border-[#D4AF37]/30 bg-[#0F1B2E]/70 p-6 backdrop-blur">
@@ -247,7 +215,7 @@ export default function AdminTransactionsDashboard() {
               </div>
             </div>
 
-            {/* Rango de fechas + botones (NUEVO DISEÑO) */}
+            {/* Rango de fechas + botones */}
             <div className="mt-2 grid gap-4 md:grid-cols-[2fr_1fr]">
               {/* Control único de rango de fechas */}
               <div className="relative flex flex-col gap-1">
@@ -263,9 +231,7 @@ export default function AdminTransactionsDashboard() {
                   <span className={desde || hasta ? "" : "text-slate-500"}>
                     {rangeLabel}
                   </span>
-                  <span className="ml-2 text-xs text-[#D4AF37]">
-                    📅
-                  </span>
+                  <span className="ml-2 text-xs text-[#D4AF37]">📅</span>
                 </button>
 
                 {showDatePicker && (
@@ -446,39 +412,6 @@ export default function AdminTransactionsDashboard() {
                 </tbody>
               </table>
             </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Indicadores fijados abajo y centrados */}
-      <div className="pointer-events-none fixed bottom-4 left-1/2 z-30 w-full max-w-6xl -translate-x-1/2 px-4">
-        <div className="pointer-events-auto grid gap-4 md:grid-cols-4">
-          <div className="rounded-lg bg-blue-600 px-4 py-3 text-white shadow-lg">
-            <p className="text-sm font-semibold">Total Transacciones</p>
-            <p className="mt-1 text-3xl font-bold leading-none">
-              {computedStats.total}
-            </p>
-          </div>
-
-          <div className="rounded-lg bg-green-600 px-4 py-3 text-white shadow-lg">
-            <p className="text-sm font-semibold">Exitosas</p>
-            <p className="mt-1 text-3xl font-bold leading-none">
-              {computedStats.aprobadas}
-            </p>
-          </div>
-
-          <div className="rounded-lg bg-red-600 px-4 py-3 text-white shadow-lg">
-            <p className="text-sm font-semibold">Rechazadas</p>
-            <p className="mt-1 text-3xl font-bold leading-none">
-              {computedStats.rechazadas}
-            </p>
-          </div>
-
-          <div className="rounded-lg bg-gradient-to-br from-[#D4AF37] to-yellow-600 px-4 py-3 text-[#0F1B2E] shadow-lg">
-            <p className="text-sm font-semibold">Monto Total Aprobado</p>
-            <p className="mt-1 text-3xl font-extrabold leading-none">
-              ${computedStats.monto_total.toFixed(2)}
-            </p>
           </div>
         </div>
       </div>
