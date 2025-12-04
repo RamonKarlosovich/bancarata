@@ -20,6 +20,7 @@ type Movimiento = {
   saldo_antes: number;
   saldo_despues: number;
   concepto_compra: string | null;
+  resultado: string;                       // APROBADA / RECHAZADA_... / ERROR_INTERNO
 };
 
 export default function HistorialCuentasPage() {
@@ -98,10 +99,13 @@ export default function HistorialCuentasPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const getMovimientoClass = (tipo: MovimientoTipo) => {
-    if (tipo === "DEBITO") return "text-red-400 font-bold";
-    if (tipo === "CREDITO") return "text-green-400 font-bold";
-    return "text-yellow-300 font-bold"; // FALLIDO
+  // Colores según RESULTADO (no según débito/crédito)
+  const getMovimientoClass = (resultado: string) => {
+    if (resultado === "APROBADA") {
+      return "text-green-400 font-bold";
+    }
+    // Cualquier rechazado / error va en rojo
+    return "text-red-400 font-bold";
   };
 
   return (
@@ -224,7 +228,7 @@ export default function HistorialCuentasPage() {
                 </td>
                 <td className="p-2">{m.numero_cuenta ?? "—"}</td>
                 <td className="p-2">{m.nombre_cliente ?? "—"}</td>
-                <td className={`p-2 ${getMovimientoClass(m.tipo_movimiento)}`}>
+                <td className={`p-2 ${getMovimientoClass(m.resultado)}`}>
                   {m.tipo_movimiento}
                 </td>
                 <td className="p-2">{m.cuenta_destino ?? "—"}</td>
