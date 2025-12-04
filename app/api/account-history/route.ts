@@ -6,7 +6,7 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
 
-    const numeroCuenta = searchParams.get("numeroCuenta"); // cuenta origen
+    const numeroCuenta = searchParams.get("numeroCuenta");
     const tipoMovimiento = searchParams.get("tipoMovimiento"); // DEBITO / CREDITO / FALLIDO
     const from = searchParams.get("from"); // YYYY-MM-DD
     const to = searchParams.get("to");     // YYYY-MM-DD
@@ -18,15 +18,14 @@ export async function GET(req: NextRequest) {
 
     const supabase = getSupabaseServer();
 
-    // OJO: los nombres deben coincidir EXACTO con la vista movimientos_cuenta
     let query = supabase
       .from("movimientos_cuenta")
       .select(
         `
         id_movimiento,
         fecha,
-        numero_cuenta,          -- cuenta origen
-        nombre_cliente,         -- titular cuenta origen
+        numero_cuenta,
+        nombre_cliente,
         tipo_movimiento,
         tipo_transaccion,
         cuenta_destino,
@@ -46,26 +45,25 @@ export async function GET(req: NextRequest) {
       )
       .order("fecha", { ascending: false });
 
-    // Filtro por número de cuenta (origen)
-    if (numeroCuenta && numeroCuenta.trim() !== "") {
-      query = query.eq("numero_cuenta", numeroCuenta.trim());
+    // Filtro por número de cuenta (puede ser origen o destino)
+    if (numeroCuenta) {
+      query = query.or(
+        `numero_cuenta.eq.${numeroCuenta},cuenta_destino.eq.${numeroCuenta}`
+      );
     }
 
-    // Filtro por tipo de movimiento
-    if (tipoMovimiento && tipoMovimiento !== "") {
+    if (tipoMovimiento) {
       query = query.eq("tipo_movimiento", tipoMovimiento);
     }
 
-    // Filtro por fechas
     if (from) {
-      query = query.gte("fecha", `${from} 00:00:00`);
+      query = query.gte("fecha", from);
     }
 
     if (to) {
-      query = query.lte("fecha", `${to} 23:59:59`);
+      query = query.lte("fecha", to + " 23:59:59");
     }
 
-    // Paginación
     query = query.range(fromIdx, toIdx);
 
     const { data, error, count } = await query;
