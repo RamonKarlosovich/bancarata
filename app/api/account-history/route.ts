@@ -6,7 +6,7 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
 
-    const numeroCuenta = searchParams.get("numeroCuenta");
+    const numeroCuenta = searchParams.get("numeroCuenta"); // cuenta origen
     const tipoMovimiento = searchParams.get("tipoMovimiento"); // DEBITO / CREDITO / FALLIDO
     const from = searchParams.get("from"); // YYYY-MM-DD
     const to = searchParams.get("to");     // YYYY-MM-DD
@@ -18,14 +18,15 @@ export async function GET(req: NextRequest) {
 
     const supabase = getSupabaseServer();
 
+    // OJO: los nombres deben coincidir EXACTO con la vista movimientos_cuenta
     let query = supabase
       .from("movimientos_cuenta")
       .select(
         `
         id_movimiento,
         fecha,
-        numero_cuenta,
-        nombre_cliente,
+        numero_cuenta,          -- cuenta origen
+        nombre_cliente,         -- titular cuenta origen
         tipo_movimiento,
         tipo_transaccion,
         cuenta_destino,
@@ -45,22 +46,22 @@ export async function GET(req: NextRequest) {
       )
       .order("fecha", { ascending: false });
 
-    // Filtros
-    if (numeroCuenta) {
-      query = query.eq("numero_cuenta", numeroCuenta);
+    // Filtro por número de cuenta (origen)
+    if (numeroCuenta && numeroCuenta.trim() !== "") {
+      query = query.eq("numero_cuenta", numeroCuenta.trim());
     }
 
-    if (tipoMovimiento) {
+    // Filtro por tipo de movimiento
+    if (tipoMovimiento && tipoMovimiento !== "") {
       query = query.eq("tipo_movimiento", tipoMovimiento);
     }
 
+    // Filtro por fechas
     if (from) {
-      // fecha >= from (00:00:00)
-      query = query.gte("fecha", from);
+      query = query.gte("fecha", `${from} 00:00:00`);
     }
 
     if (to) {
-      // fecha <= to 23:59:59
       query = query.lte("fecha", `${to} 23:59:59`);
     }
 
