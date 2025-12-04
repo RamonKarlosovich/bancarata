@@ -9,14 +9,14 @@ type MovimientoTipo = "DEBITO" | "CREDITO" | "FALLIDO";
 
 type Movimiento = {
   id_movimiento: number;
-  fecha: string;
+  fecha: string | null;
   numero_cuenta: string;
   nombre_cliente: string;
   tipo_movimiento: MovimientoTipo;
   tipo_transaccion: "DEPOSITO" | "RETIRO" | "TRANSFERENCIA" | string;
-  monto: number;
-  saldo_antes: number;
-  saldo_despues: number;
+  monto: number | string;
+  saldo_antes: number | string;
+  saldo_despues: number | string;
   comercio: string | null;
   concepto_compra: string | null;
   numero_tarjeta: string | null;
@@ -41,7 +41,7 @@ export default function HistorialCuentasPage() {
     setLoading(true);
     setErrorMsg(null);
 
-    // Validaciones básicas de fechas
+    // Validaciones de fechas
     if (desde && hasta && desde > hasta) {
       setErrorMsg("La fecha DESDE no puede ser mayor que la fecha HASTA.");
       setLoading(false);
@@ -91,11 +91,14 @@ export default function HistorialCuentasPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ✅ Aquí se invierten los colores: FALLIDO rojo, movimientos efectuados verde
   const getMovimientoClass = (tipo: MovimientoTipo) => {
     if (tipo === "FALLIDO") return "text-red-400 font-bold";
-    return "text-green-400 font-bold"; // DEBITO y CREDITO
+    if (tipo === "DEBITO" || tipo === "CREDITO") return "text-green-400 font-bold";
+    return "";
   };
+
+  const formatMoney = (value: number | string | null | undefined) =>
+    Number(value || 0).toFixed(2);
 
   return (
     <div className="p-6 text-[#F5F1E8] bg-[#0F1B2E] min-h-screen">
@@ -214,7 +217,9 @@ export default function HistorialCuentasPage() {
                 className="odd:bg-slate-800 even:bg-slate-900"
               >
                 <td className="p-2">
-                  {new Date(m.fecha).toLocaleString("es-MX")}
+                  {m.fecha
+                    ? new Date(m.fecha).toLocaleString("es-MX")
+                    : "—"}
                 </td>
                 <td className="p-2">{m.numero_cuenta}</td>
                 <td className="p-2">{m.nombre_cliente}</td>
@@ -232,13 +237,13 @@ export default function HistorialCuentasPage() {
                   {m.concepto_compra ?? m.descripcion ?? "—"}
                 </td>
                 <td className="p-2 text-right">
-                  ${m.monto.toFixed(2)}
+                  ${formatMoney(m.monto)}
                 </td>
                 <td className="p-2 text-right">
-                  ${m.saldo_antes.toFixed(2)}
+                  ${formatMoney(m.saldo_antes)}
                 </td>
                 <td className="p-2 text-right">
-                  ${m.saldo_despues.toFixed(2)}
+                  ${formatMoney(m.saldo_despues)}
                 </td>
               </tr>
             ))}
