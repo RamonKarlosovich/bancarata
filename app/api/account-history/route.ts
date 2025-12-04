@@ -24,15 +24,15 @@ export async function GET(req: NextRequest) {
         `
         id_movimiento,
         fecha,
-        id_cuenta,
         numero_cuenta,
         nombre_cliente,
         tipo_movimiento,
         tipo_transaccion,
+        cuenta_destino,
+        nombre_cliente_destino,
         monto,
         saldo_antes,
         saldo_despues,
-        comercio,
         concepto_compra,
         numero_tarjeta,
         id_transaccion,
@@ -45,6 +45,7 @@ export async function GET(req: NextRequest) {
       )
       .order("fecha", { ascending: false });
 
+    // Filtros
     if (numeroCuenta) {
       query = query.eq("numero_cuenta", numeroCuenta);
     }
@@ -54,13 +55,16 @@ export async function GET(req: NextRequest) {
     }
 
     if (from) {
+      // fecha >= from (00:00:00)
       query = query.gte("fecha", from);
     }
 
     if (to) {
-      query = query.lte("fecha", to + " 23:59:59");
+      // fecha <= to 23:59:59
+      query = query.lte("fecha", `${to} 23:59:59`);
     }
 
+    // Paginación
     query = query.range(fromIdx, toIdx);
 
     const { data, error, count } = await query;

@@ -9,14 +9,21 @@ type MovimientoTipo = "DEBITO" | "CREDITO" | "FALLIDO";
 
 type Movimiento = {
   id_movimiento: number;
-  fecha: string | null;
+  fecha: string;
+
+  // ORIGEN (ya existen en la vista como numero_cuenta / nombre_cliente)
   numero_cuenta: string;
   nombre_cliente: string;
+
+  // DESTINO (opcional: debes agregarlos en la vista de Supabase)
+  cuenta_destino?: string | null;
+  nombre_cliente_destino?: string | null;
+
   tipo_movimiento: MovimientoTipo;
   tipo_transaccion: "DEPOSITO" | "RETIRO" | "TRANSFERENCIA" | string;
-  monto: number | string;
-  saldo_antes: number | string;
-  saldo_despues: number | string;
+  monto: number;
+  saldo_antes: number;
+  saldo_despues: number;
   comercio: string | null;
   concepto_compra: string | null;
   numero_tarjeta: string | null;
@@ -65,11 +72,11 @@ export default function HistorialCuentasPage() {
     }
 
     if (desde) {
-      params.set("from", desde); // YYYY-MM-DD
+      params.set("from", desde);
     }
 
     if (hasta) {
-      params.set("to", hasta); // YYYY-MM-DD
+      params.set("to", hasta);
     }
 
     try {
@@ -85,30 +92,26 @@ export default function HistorialCuentasPage() {
     }
   }
 
-  // Al entrar a la página, cargar TODOS los movimientos
+  // Al entrar a la página, cargar todos los movimientos
   useEffect(() => {
     buscar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const getMovimientoClass = (tipo: MovimientoTipo) => {
-    if (tipo === "FALLIDO") return "text-red-400 font-bold";
-    if (tipo === "DEBITO" || tipo === "CREDITO") return "text-green-400 font-bold";
-    return "";
+    if (tipo === "DEBITO") return "text-red-400 font-bold";     // dinero sale
+    if (tipo === "CREDITO") return "text-green-400 font-bold";  // dinero entra
+    return "text-yellow-300 font-bold";                         // FALLIDO
   };
-
-  const formatMoney = (value: number | string | null | undefined) =>
-    Number(value || 0).toFixed(2);
 
   return (
     <div className="p-6 text-[#F5F1E8] bg-[#0F1B2E] min-h-screen">
-      {/* Título + botón Salir (igual estilo que el Panel) */}
+      {/* Título + botón Salir (igual al Panel) */}
       <div className="flex items-center justify-between mb-4">
         <h1 className="text-2xl font-bold text-[#D4AF37]">
           Historial de cuentas
         </h1>
 
-        {/* Aquí NO cerramos sesión, solo regresamos al Panel Administrativo */}
         <Link
           href="/admin/dashboard"
           className="flex items-center gap-2 rounded-lg px-4 py-2 text-sm text-[#D4AF37] transition hover:bg-[#D4AF37]/10"
@@ -185,7 +188,7 @@ export default function HistorialCuentasPage() {
         </div>
       </div>
 
-      {/* Mensaje de error de validaciones / carga */}
+      {/* Mensaje de error */}
       {errorMsg && (
         <div className="mt-3 text-sm text-red-400">
           {errorMsg}
@@ -194,20 +197,37 @@ export default function HistorialCuentasPage() {
 
       {/* TABLA */}
       <div className="mt-6 overflow-x-auto border border-slate-700 rounded-xl bg-[#0F1B2E]">
-        <table className="w-full text-xs md:text-sm">
+        <table className="w-full text-xs md:text-sm border-collapse">
           <thead className="bg-[#1a2a45] text-[#D4AF37]">
             <tr>
-              <th className="p-2 text-left">Fecha</th>
-              <th className="p-2 text-left">Cuenta</th>
-              <th className="p-2 text-left">Cliente</th>
-              <th className="p-2 text-left">Tarjeta</th>
-              <th className="p-2 text-left">Movimiento</th>
-              <th className="p-2 text-left">Tipo</th>
-              <th className="p-2 text-left">Comercio</th>
-              <th className="p-2 text-left">Concepto</th>
-              <th className="p-2 text-right">Monto</th>
-              <th className="p-2 text-right">Saldo antes</th>
-              <th className="p-2 text-right">Saldo después</th>
+              <th className="p-2 text-left border-r border-slate-700">Fecha</th>
+              <th className="p-2 text-left border-r border-slate-700">
+                Cuenta origen
+              </th>
+              <th className="p-2 text-left border-r border-slate-700">
+                Titular cuenta origen
+              </th>
+              <th className="p-2 text-left border-r border-slate-700">
+                Movimiento
+              </th>
+              <th className="p-2 text-left border-r border-slate-700">
+                Cuenta destino
+              </th>
+              <th className="p-2 text-left border-r border-slate-700">
+                Titular cuenta destino
+              </th>
+              <th className="p-2 text-left border-r border-slate-700">
+                Concepto
+              </th>
+              <th className="p-2 text-right border-r border-slate-700">
+                Saldo anterior
+              </th>
+              <th className="p-2 text-right border-r border-slate-700">
+                Monto
+              </th>
+              <th className="p-2 text-right">
+                Saldo final
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -216,34 +236,49 @@ export default function HistorialCuentasPage() {
                 key={m.id_movimiento}
                 className="odd:bg-slate-800 even:bg-slate-900"
               >
-                <td className="p-2">
-                  {m.fecha
-                    ? new Date(m.fecha).toLocaleString("es-MX")
-                    : "—"}
+                <td className="p-2 border-r border-slate-800">
+                  {new Date(m.fecha).toLocaleString("es-MX")}
                 </td>
-                <td className="p-2">{m.numero_cuenta}</td>
-                <td className="p-2">{m.nombre_cliente}</td>
-                <td className="p-2">
-                  {m.numero_tarjeta
-                    ? "**** **** **** " + m.numero_tarjeta.slice(-4)
-                    : "—"}
+
+                {/* Cuenta / titular ORIGEN */}
+                <td className="p-2 border-r border-slate-800">
+                  {m.numero_cuenta}
                 </td>
-                <td className={`p-2 ${getMovimientoClass(m.tipo_movimiento)}`}>
+                <td className="p-2 border-r border-slate-800">
+                  {m.nombre_cliente}
+                </td>
+
+                {/* Movimiento */}
+                <td
+                  className={`p-2 border-r border-slate-800 ${getMovimientoClass(
+                    m.tipo_movimiento
+                  )}`}
+                >
                   {m.tipo_movimiento}
                 </td>
-                <td className="p-2">{m.tipo_transaccion}</td>
-                <td className="p-2">{m.comercio ?? "—"}</td>
-                <td className="p-2">
+
+                {/* Cuenta / titular DESTINO (pueden venir null si aún no los agregas en la vista) */}
+                <td className="p-2 border-r border-slate-800">
+                  {m.cuenta_destino ?? "—"}
+                </td>
+                <td className="p-2 border-r border-slate-800">
+                  {m.nombre_cliente_destino ?? "—"}
+                </td>
+
+                {/* Concepto */}
+                <td className="p-2 border-r border-slate-800">
                   {m.concepto_compra ?? m.descripcion ?? "—"}
                 </td>
-                <td className="p-2 text-right">
-                  ${formatMoney(m.monto)}
+
+                {/* Saldos y monto */}
+                <td className="p-2 text-right border-r border-slate-800">
+                  ${m.saldo_antes.toFixed(2)}
+                </td>
+                <td className="p-2 text-right border-r border-slate-800">
+                  ${m.monto.toFixed(2)}
                 </td>
                 <td className="p-2 text-right">
-                  ${formatMoney(m.saldo_antes)}
-                </td>
-                <td className="p-2 text-right">
-                  ${formatMoney(m.saldo_despues)}
+                  ${m.saldo_despues.toFixed(2)}
                 </td>
               </tr>
             ))}
@@ -251,7 +286,7 @@ export default function HistorialCuentasPage() {
             {!loading && movimientos.length === 0 && (
               <tr>
                 <td
-                  colSpan={11}
+                  colSpan={10}
                   className="p-4 text-center text-slate-400"
                 >
                   No se encontraron movimientos para los filtros seleccionados.
