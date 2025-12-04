@@ -17,8 +17,12 @@ type Movimiento = {
   cuenta_destino: string | null;
   nombre_cliente_destino: string | null;   // titular cuenta destino
   monto: number;
-  saldo_antes: number;
-  saldo_despues: number;
+  // Saldos cuenta origen (ya existentes)
+  saldo_antes: number | null;
+  saldo_despues: number | null;
+  // Nuevos saldos cuenta destino
+  saldo_antes_destino: number | null;
+  saldo_despues_destino: number | null;
   concepto_compra: string | null;
   resultado: string;                       // APROBADA / RECHAZADA_... / ERROR_INTERNO
 };
@@ -106,6 +110,11 @@ export default function HistorialCuentasPage() {
     }
     // Cualquier rechazado / error va en rojo
     return "text-red-400 font-bold";
+  };
+
+  const formatCurrency = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return "—";
+    return `$${value.toFixed(2)}`;
   };
 
   return (
@@ -212,9 +221,11 @@ export default function HistorialCuentasPage() {
               <th className="p-2 text-left w-32">Cuenta destino</th>
               <th className="p-2 text-left w-56">Titular cuenta destino</th>
               <th className="p-2 text-left w-64">Concepto</th>
-              <th className="p-2 text-right w-32">Saldo anterior</th>
               <th className="p-2 text-right w-28">Monto</th>
-              <th className="p-2 text-right w-32">Saldo final</th>
+              <th className="p-2 text-right w-32">Saldo anterior origen</th>
+              <th className="p-2 text-right w-32">Saldo final origen</th>
+              <th className="p-2 text-right w-32">Saldo anterior destino</th>
+              <th className="p-2 text-right w-32">Saldo final destino</th>
             </tr>
           </thead>
           <tbody>
@@ -237,13 +248,21 @@ export default function HistorialCuentasPage() {
                   {m.concepto_compra || "—"}
                 </td>
                 <td className="p-2 text-right">
-                  ${Number(m.saldo_antes || 0).toFixed(2)}
+                  ${m.monto.toFixed(2)}
+                </td>
+                {/* Saldos ORIGEN */}
+                <td className="p-2 text-right">
+                  {formatCurrency(m.saldo_antes)}
                 </td>
                 <td className="p-2 text-right">
-                  ${Number(m.monto || 0).toFixed(2)}
+                  {formatCurrency(m.saldo_despues)}
+                </td>
+                {/* Saldos DESTINO */}
+                <td className="p-2 text-right">
+                  {formatCurrency(m.saldo_antes_destino)}
                 </td>
                 <td className="p-2 text-right">
-                  ${Number(m.saldo_despues || 0).toFixed(2)}
+                  {formatCurrency(m.saldo_despues_destino)}
                 </td>
               </tr>
             ))}
@@ -251,7 +270,7 @@ export default function HistorialCuentasPage() {
             {!loading && movimientos.length === 0 && !errorMsg && (
               <tr>
                 <td
-                  colSpan={10}
+                  colSpan={12}
                   className="p-4 text-center text-slate-400"
                 >
                   No se encontraron movimientos para los filtros seleccionados.

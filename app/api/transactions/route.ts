@@ -18,12 +18,16 @@ type TransaccionRow = {
 type TransaccionDashboard = {
   id_transaccion: number;
   creada_utc: string;
-  nombre_cliente: string | null;
+  nombre_cliente: string | null;           // cliente ORIGEN
   servicio: string | null;
-  numero_tarjeta: string | null;
+  numero_tarjeta: string | null;           // tarjeta ORIGEN
   monto: number;
   nombre_estado: string | null;
   descripcion: string | null;
+
+  // ===== NUEVOS VALORES (DESTINO) =====
+  nombre_cliente_destino: string | null;   // cliente DESTINO
+  numero_tarjeta_destino: string | null;   // tarjeta DESTINO
 };
 
 export async function GET(req: NextRequest) {
@@ -95,10 +99,11 @@ export async function GET(req: NextRequest) {
 
     // ============ 2) TABLAS RELACIONADAS ============
 
+    // Ahora incluimos tarjetas ORIGEN y DESTINO
     const tarjetaIds = Array.from(
       new Set(
         transaccionesBase
-          .map((t) => t.id_tarjeta_origen)
+          .flatMap((t) => [t.id_tarjeta_origen, t.id_tarjeta_destino])
           .filter((v): v is number => v != null)
       )
     );
@@ -207,14 +212,26 @@ export async function GET(req: NextRequest) {
     // ============ 4) ARMAR RESPUESTA PARA EL DASHBOARD ============
 
     const transacciones: TransaccionDashboard[] = transaccionesBase.map((tx) => {
-      const tarjeta = tx.id_tarjeta_origen
+      // ORIGEN
+      const tarjetaOrigen = tx.id_tarjeta_origen
         ? tarjetasById.get(tx.id_tarjeta_origen) ?? null
         : null;
-      const cuenta = tarjeta?.id_cuenta
-        ? cuentasById.get(tarjeta.id_cuenta) ?? null
+      const cuentaOrigen = tarjetaOrigen?.id_cuenta
+        ? cuentasById.get(tarjetaOrigen.id_cuenta) ?? null
         : null;
-      const clienteRow = cuenta?.id_cliente
-        ? clientesById.get(cuenta.id_cliente) ?? null
+      const clienteOrigenRow = cuentaOrigen?.id_cliente
+        ? clientesById.get(cuentaOrigen.id_cliente) ?? null
+        : null;
+
+      // DESTINO (NUEVO)
+      const tarjetaDestino = tx.id_tarjeta_destino
+        ? tarjetasById.get(tx.id_tarjeta_destino) ?? null
+        : null;
+      const cuentaDestino = tarjetaDestino?.id_cuenta
+        ? cuentasById.get(tarjetaDestino.id_cuenta) ?? null
+        : null;
+      const clienteDestinoRow = cuentaDestino?.id_cliente
+        ? clientesById.get(cuentaDestino.id_cliente) ?? null
         : null;
 
       const estadoNombre = tx.id_estado_transaccion
@@ -224,12 +241,16 @@ export async function GET(req: NextRequest) {
       return {
         id_transaccion: tx.id_transaccion,
         creada_utc: tx.creada_utc,
-        nombre_cliente: clienteRow?.nombre ?? null,
+        nombre_cliente: clienteOrigenRow?.nombre ?? null,
         servicio: null,
-        numero_tarjeta: tarjeta?.numero_tarjeta ?? null,
+        numero_tarjeta: tarjetaOrigen?.numero_tarjeta ?? null,
         monto: tx.monto,
         nombre_estado: estadoNombre ? estadoNombre.toUpperCase() : null,
         descripcion: tx.descripcion ?? null,
+
+        // nuevos campos
+        nombre_cliente_destino: clienteDestinoRow?.nombre ?? null,
+        numero_tarjeta_destino: tarjetaDestino?.numero_tarjeta ?? null,
       };
     });
 
@@ -241,9 +262,16 @@ export async function GET(req: NextRequest) {
       const q = clienteParam.toLowerCase();
       const qNum = clienteParam.replace(/\s+/g, "");
       filtradas = filtradas.filter((t) => {
-        const nombre = (t.nombre_cliente ?? "").toLowerCase();
-        const num = (t.numero_tarjeta ?? "").replace(/\s+/g, "");
-        return nombre.includes(q) || num.includes(qNum);
+        const nombreOrigen = (t.nombre_cliente ?? "").toLowerCase();
+        const nombreDestino = (t.nombre_cliente_destino ?? "").toLowerCase();
+        const numOrigen = (t.numero_tarjeta ?? "").replace(/\s+/g, "");
+        const numDestino = (t.numero_tarjeta_destino ?? "").replace(/\s+/g, "");
+        return (
+          nombreOrigen.includes(q) ||
+          nombreDestino.includes(q) ||
+          numOrigen.includes(qNum) ||
+          numDestino.includes(qNum)
+        );
       });
     }
 

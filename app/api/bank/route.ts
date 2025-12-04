@@ -46,6 +46,7 @@ interface TarjetaJoin {
     id_cuenta: number;
     saldo_actual: string | number;
     fecha_cierre: string | null;
+    numero_cuenta?: string | null;
     clientes?: {
       id_cliente: number;
       nombre: string;
@@ -183,6 +184,93 @@ async function registrarLogTransaccion(opts: {
 }
 
 // ---------------------------------------------------------------------------
+// Helper: registrar movimiento en movimientos_cuenta
+// ---------------------------------------------------------------------------
+async function registrarMovimientoCuenta(opts: {
+  supabase: SupabaseClient;
+  id_transaccion: number | null;
+  resultado: ResultadoTransaccionEnum;
+  tipo_movimiento: "DEBITO" | "CREDITO" | "FALLIDO";
+  tipo_transaccion: string;
+  concepto: string;
+  monto: number;
+  origen?: TarjetaJoin | null;
+  destino?: TarjetaJoin | null;
+  saldo_origen_antes?: number | null;
+  saldo_origen_despues?: number | null;
+  saldo_destino_antes?: number | null;
+  saldo_destino_despues?: number | null;
+  fecha?: string;
+}) {
+  const {
+    supabase,
+    id_transaccion,
+    resultado,
+    tipo_movimiento,
+    tipo_transaccion,
+    concepto,
+    monto,
+    origen,
+    destino,
+    saldo_origen_antes,
+    saldo_origen_despues,
+    saldo_destino_antes,
+    saldo_destino_despues,
+    fecha,
+  } = opts;
+
+  try {
+    const cuentaOrigen = origen?.cuentas ?? null;
+    const cuentaDestino = destino?.cuentas ?? null;
+    const titularOrigen = cuentaOrigen?.clientes ?? null;
+    const titularDestino = cuentaDestino?.clientes ?? null;
+
+    const saldoOriAntes =
+      saldo_origen_antes ??
+      (cuentaOrigen ? Number(cuentaOrigen.saldo_actual) : null);
+    const saldoOriDespues =
+      saldo_origen_despues != null ? saldo_origen_despues : saldoOriAntes;
+
+    const saldoDesAntes =
+      saldo_destino_antes ??
+      (cuentaDestino ? Number(cuentaDestino.saldo_actual) : null);
+    const saldoDesDespues =
+      saldo_destino_despues != null ? saldo_destino_despues : saldoDesAntes;
+
+    const { error: movErr } = await supabase.from("movimientos_cuenta").insert({
+      id_transaccion,
+      fecha: fecha ?? new Date().toISOString(),
+
+      id_cuenta_origen: cuentaOrigen?.id_cuenta ?? null,
+      numero_cuenta_origen: cuentaOrigen?.numero_cuenta ?? null,
+      nombre_cliente_origen: titularOrigen?.nombre ?? null,
+
+      id_cuenta_destino: cuentaDestino?.id_cuenta ?? null,
+      numero_cuenta_destino: cuentaDestino?.numero_cuenta ?? null,
+      nombre_cliente_destino: titularDestino?.nombre ?? null,
+
+      tipo_movimiento,
+      tipo_transaccion,
+      concepto,
+      monto,
+
+      saldo_antes_origen: saldoOriAntes,
+      saldo_despues_origen: saldoOriDespues,
+      saldo_antes_destino: saldoDesAntes,
+      saldo_despues_destino: saldoDesDespues,
+
+      resultado,
+    });
+
+    if (movErr) {
+      console.error("Error al registrar movimiento en movimientos_cuenta:", movErr);
+    }
+  } catch (err) {
+    console.error("Error inesperado al registrar movimiento_cuenta:", err);
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Helper: registrar transacción RECHAZADA y devolver id/fecha
 // ---------------------------------------------------------------------------
 async function registrarTransaccionRechazada(
@@ -255,6 +343,24 @@ async function registrarTransaccionRechazada(
       console.error("No se pudo registrar transacción rechazada", error);
       return null;
     }
+
+    // Registrar movimiento FALLIDO en movimientos_cuenta
+    const resultadoMov: ResultadoTransaccionEnum =
+      mensaje === "Fondos insuficientes" ? "RECHAZADA_SALDO" : "RECHAZADA_DATOS";
+
+    await registrarMovimientoCuenta({
+      supabase,
+      id_transaccion: trx.id_transaccion,
+      resultado: resultadoMov,
+      tipo_movimiento: "FALLIDO",
+      tipo_transaccion: "TRANSFERENCIA",
+      concepto: descripcion,
+      monto: montoLog,
+      origen: origen ?? null,
+      destino: destino ?? null,
+      // En fallidas, los saldos antes y después normalmente son iguales
+      fecha: trx.creada_utc,
+    });
 
     return trx;
   } catch (err) {
@@ -446,6 +552,7 @@ export async function POST(req: NextRequest) {
           id_cuenta,
           saldo_actual,
           fecha_cierre,
+          numero_cuenta,
           clientes (
             id_cliente,
             nombre,
@@ -545,7 +652,13 @@ export async function POST(req: NextRequest) {
         cuentas (
           id_cuenta,
           saldo_actual,
-          fecha_cierre
+          fecha_cierre,
+          numero_cuenta,
+          clientes (
+            id_cliente,
+            nombre,
+            activo
+          )
         )
       `
       )
@@ -682,6 +795,24 @@ export async function POST(req: NextRequest) {
         destino
       );
     }
+
+    // ===== Registrar movimiento APROBADO en movimientos_cuenta =====
+    await registrarMovimientoCuenta({
+      supabase,
+      id_transaccion: trx.id_transaccion,
+      resultado: "APROBADA",
+      tipo_movimiento: "DEBITO",
+      tipo_transaccion: "TRANSFERENCIA",
+      concepto: "TRANSFERENCIA",
+      monto: Number(body.Monto),
+      origen,
+      destino,
+      saldo_origen_antes: saldoOrigen,
+      saldo_origen_despues: nuevoSaldoOrigen,
+      saldo_destino_antes: saldoDestinoOriginal,
+      saldo_destino_despues: nuevoSaldoDestino,
+      fecha: trx.creada_utc,
+    });
 
     const ult4 = String(destino.numero_tarjeta).slice(-4);
     const idBonito = String(trx.id_transaccion).padStart(6, "0");
